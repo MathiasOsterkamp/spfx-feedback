@@ -4,10 +4,7 @@ import { ISecurityPolicy } from '../config/securityConfig';
 import { formatText } from '../loc/template';
 import * as strings from 'FeedbackApplicationCustomizerStrings';
 
-/*
- * Checks of the settings view (settings list). An empty value is always valid: the default of the code applies.
- * Each function returns an error message or ''.
- */
+// Each returns an error message or ''. Empty is always valid: the code default applies.
 
 export function checkListName(value: string): string {
   const name = value.trim();
@@ -19,7 +16,6 @@ export function checkColumnName(value: string): string {
   return !name || FIELD_NAME.test(name) ? '' : strings.setupErrorColumnName;
 }
 
-/** One category per line; empty lines are ignored. */
 export function checkCategories(value: string, policy: ISecurityPolicy): string {
   const lines = splitLines(value).map(singleLine).filter((line: string) => !!line);
   return lines.length > policy.maxCategories || lines.some((line: string) => line.length > policy.maxCategoryLength)
@@ -27,7 +23,6 @@ export function checkCategories(value: string, policy: ISecurityPolicy): string 
     : '';
 }
 
-/** Length, HTML and placeholders of a mail template (subject or body; both plain text). */
 export function checkMailTemplate(value: string, maxLength: number): string {
   const text = value.trim();
   if (text.length > maxLength) {

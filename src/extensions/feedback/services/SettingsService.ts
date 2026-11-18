@@ -6,16 +6,12 @@ import { logVerbose, logWarning } from '../utils/logging';
 import { applyStoredValues, settingEntryKeys } from '../utils/sanitize';
 import { IUntyped, odataItems } from '../utils/untyped';
 
-/** More entries than the settings list ever needs; protects against a list that was filled by mistake. */
+/** Protects against a list that was filled by mistake. */
 const MAX_ENTRIES = 500;
 
 /**
- * Reads the settings list of the site (config settingsList) and applies its entries to the code
- * configuration: contact list and column, categories, mail template, shared mailbox (storage "list").
- *
- * One request when the dialog opens, cached for the page view. Never fails: if the list cannot be read,
- * the code configuration applies and stored is undefined. A missing list or value column means
- * "nothing stored" - "Set up" in the settings view creates both.
+ * Applies the settings list entries to the code configuration; one request, cached for the page view.
+ * Never fails: unreadable list -> code configuration, stored undefined; missing list or column -> nothing stored.
  */
 export class SettingsService {
   private readonly api: string;
@@ -25,7 +21,7 @@ export class SettingsService {
     private readonly httpClient: SPHttpClient,
     webAbsoluteUrl: string,
     private readonly webServerRelativeUrl: string,
-    /** Checked code configuration (config/feedbackConfig.ts), without the values of the settings list. */
+    /** Code configuration, without the values of the settings list. */
     public readonly base: IFeedbackSettings,
     private readonly policy: ISecurityPolicy
   ) {
@@ -43,7 +39,6 @@ export class SettingsService {
     return this.cache;
   }
 
-  /** Forgets the cached values, e.g. after the settings view saved. */
   public reset(): void {
     this.cache = undefined;
   }

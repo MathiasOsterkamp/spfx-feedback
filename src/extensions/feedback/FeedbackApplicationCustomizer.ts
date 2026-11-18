@@ -17,24 +17,19 @@ import { createSettings } from './utils/sanitize';
 import { createSharePointTheme } from './utils/theme';
 import { asRecord } from './utils/untyped';
 
-/**
- * Properties of the extension (ClientSideComponentProperties of the custom action, see
- * sharepoint/assets/elements.xml). Everything else is configured in code (config/feedbackConfig.ts)
- * and per site in the settings list (settings view of the dialog, gear icon).
- */
+/** ClientSideComponentProperties (sharepoint/assets/elements.xml); all else: config/feedbackConfig.ts and settings list. */
 export interface IFeedbackApplicationCustomizerProperties {
-  /** From which level on the log is written to the browser console */
+  /** Minimum level written to the browser console. */
   logLevel?: LogLevelName;
 }
 
-/** Base template of the "Site Pages" library (pages and news posts). */
+/** Base template of the "Site Pages" library. */
 const SITE_PAGES_TEMPLATE = 119;
 
-/** Name and version of the solution package, written to the log on start. */
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- an import would pull config/ into the compiler's rootDir and shift the output in lib/
 const SOLUTION = asRecord(asRecord(require('../../../config/package-solution.json')).solution);
 
-/** Marks the container, so that the button exists only once even if the custom action is registered twice. */
+/** Prevents a second button if the custom action is registered twice. */
 const CONTAINER_ID = 'spfx-feedback-button';
 
 export default class FeedbackApplicationCustomizer extends BaseApplicationCustomizer<IFeedbackApplicationCustomizerProperties> {
@@ -57,7 +52,7 @@ export default class FeedbackApplicationCustomizer extends BaseApplicationCustom
     initializeIcons();
 
     const policy = createSecurityPolicy();
-    // Code configuration; the settings list of the site is read when the dialog opens (SettingsService).
+    // The settings list is read only when the dialog opens (SettingsService).
     const settings = createSettings(FEEDBACK_CONFIG, this.context.pageContext.cultureInfo.currentUICultureName, policy);
     const web = this.context.pageContext.web;
     const user = this.context.pageContext.user;
@@ -79,13 +74,12 @@ export default class FeedbackApplicationCustomizer extends BaseApplicationCustom
       mailService: new MailService(http, web.absoluteUrl),
       recipientService: new RecipientService(http, web.absoluteUrl, policy),
       setupService: new SetupService(http, web.absoluteUrl, web.serverRelativeUrl, settings),
-      // Gear icon (setup): at least "Design" on the site - this permission level includes ManageLists.
+      // Gear icon: "Design" permission level (includes ManageLists).
       canConfigure: web.permissions.hasPermission(SPPermission.manageLists),
       canSaveSettings
     };
 
-    // A container of its own at the end of the body: the button floats over the page
-    // and is not affected by the layout of the SharePoint placeholders.
+    // Own container at the end of the body: the floating button is independent of the SharePoint placeholders.
     this.container = document.createElement('div');
     this.container.id = CONTAINER_ID;
     document.body.appendChild(this.container);
@@ -118,9 +112,8 @@ export default class FeedbackApplicationCustomizer extends BaseApplicationCustom
   }
 
   /**
-   * The current page, if it is an item of the Site Pages library (pages and news posts).
-   * SPFx 1.4.1 does not expose the base template of the list, it is taken from the legacy page context;
-   * if it is missing there, the library URL ".../SitePages" decides.
+   * Only items of Site Pages. SPFx 1.4.1 does not expose the list base template: it comes from the
+   * legacy page context, otherwise the library URL ".../SitePages" decides.
    */
   private currentSitePage(): IPageInfo | undefined {
     const pageContext = this.context.pageContext;
@@ -137,8 +130,8 @@ export default class FeedbackApplicationCustomizer extends BaseApplicationCustom
     if (!isSitePages) {
       return undefined;
     }
-    // Permissions decide which setup actions the form offers; SharePoint checks them again on the server.
-    // Creating the contact list needs ManageLists on the web, the lookup column ManageLists on Site Pages.
+    // Only decides which setup actions are offered (SharePoint checks on the server):
+    // the contact list needs ManageLists on the web, the lookup column ManageLists on Site Pages.
     const web = pageContext.web;
     return {
       listId: list.id.toString(),

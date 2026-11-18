@@ -4,26 +4,20 @@ import { ITheme, useTheme } from '@fluentui/react/lib/Theme';
 import { memoizeFunction } from '@fluentui/react/lib/Utilities';
 import { MIN_GRAPHIC_CONTRAST, readableColor } from '../utils/theme';
 
-/*
- * Accessibility: no text below 14px (theme.fonts.medium; the theme also raises Fluent's small sizes, see utils/theme.ts),
- * text colors from the theme, which corrects them to a contrast of at least 4.5:1 - colors combined here are
- * checked with readableColor.
- */
+// Accessibility: no text below 14px (see utils/theme.ts); theme text colors are corrected to >= 4.5:1,
+// colors combined here are checked with readableColor.
 
-/** Gap between the two columns and around the form. */
 const GUTTER = 16;
 
-/** Generated class names of the dialog (explicit type: needed for the declaration output of the build). */
+/** Explicit type: needed for the declaration output of the build. */
 export interface IFeedbackClassNames {
   columns: string;
   column: string;
   sectionTitle: string;
-  hint: string;
   field: string;
   message: string;
 }
 
-/** Styles depend on the theme, therefore they are created per theme (and cached). */
 const getClassNames = memoizeFunction((theme: ITheme): IFeedbackClassNames => mergeStyleSets({
   // Flexbox with negative margins instead of "gap": also works in IE11 (SharePoint 2019).
   columns: {
@@ -37,7 +31,7 @@ const getClassNames = memoizeFunction((theme: ITheme): IFeedbackClassNames => me
     minWidth: 0,
     boxSizing: 'border-box',
     padding: `0 ${GUTTER}px`,
-    // Reset of the browser styles for <fieldset>
+    // Reset browser styles for <fieldset>
     border: 0,
     margin: 0
   },
@@ -47,11 +41,6 @@ const getClassNames = memoizeFunction((theme: ITheme): IFeedbackClassNames => me
     color: theme.semanticColors.bodyText,
     margin: '8px 0 4px',
     padding: 0
-  },
-  hint: {
-    ...theme.fonts.medium,
-    color: theme.semanticColors.bodySubtext,
-    margin: '8px 0 0'
   },
   field: {
     marginTop: 12
@@ -65,7 +54,6 @@ export function useClassNames(): IFeedbackClassNames {
   return getClassNames(useTheme());
 }
 
-/** Class names of the settings view (SettingsView). */
 export interface ISettingsClassNames {
   tabs: string;
   panel: string;
@@ -112,13 +100,11 @@ const getSettingsClassNames = memoizeFunction((theme: ITheme): ISettingsClassNam
     // Text below a dropdown, like the description of a text field (Dropdown has no description prop).
     description: { ...small, color: theme.semanticColors.bodySubtext },
     warning: { ...small, color: readableColor(background, [theme.semanticColors.warningText, theme.semanticColors.bodyText]) },
-    // Small links below a field ("insert default", "use default").
     links: {
       ...theme.fonts.medium,
       margin: '6px 0 0',
       selectors: { '& > *': { marginRight: 16 } }
     },
-    // Read-only "label / value" row, aligned like the labels of the text fields.
     row: {
       marginTop: 12
     },
@@ -137,7 +123,6 @@ const getSettingsClassNames = memoizeFunction((theme: ITheme): ISettingsClassNam
       maxWidth: 320
     },
     intro: { ...text, color: theme.semanticColors.bodyText, marginTop: 12 },
-    // Checklist of the setup: icon, name of the part, status below.
     checklist: {
       listStyle: 'none',
       margin: '12px 0 0',
@@ -180,7 +165,6 @@ export function useSettingsClassNames(): ISettingsClassNames {
   return getSettingsClassNames(useTheme());
 }
 
-/** Class names of the mail preview (MailPreview). */
 export interface IPreviewClassNames {
   title: string;
   hint: string;
@@ -215,7 +199,7 @@ const getPreviewClassNames = memoizeFunction((theme: ITheme): IPreviewClassNames
       overflow: 'hidden',
       boxShadow: theme.effects.elevation4
     },
-    // Header like in a mail program: a table (label | value), also works in IE11.
+    // A table (label | value): also works in IE11.
     header: {
       width: '100%',
       borderCollapse: 'collapse',
@@ -248,7 +232,6 @@ const getPreviewClassNames = memoizeFunction((theme: ITheme): IPreviewClassNames
       color: theme.semanticColors.bodyText,
       padding: '6px 16px 6px 0'
     },
-    // One chip per address: several recipients stay readable.
     address: {
       display: 'inline-block',
       maxWidth: '100%',
@@ -289,10 +272,7 @@ export function usePreviewClassNames(): IPreviewClassNames {
   return getPreviewClassNames(useTheme());
 }
 
-/**
- * Round, floating button at the bottom right of the page. The icon color is chosen per state so that it
- * contrasts with the theme color; a theme color too light for the page gets a dark edge (WCAG 1.4.11).
- */
+/** Icon color per state contrasts with the theme color; a too-light theme color gets a dark edge (WCAG 1.4.11). */
 export const getFloatingButtonStyles = memoizeFunction((theme: ITheme): IButtonStyles => {
   const { palette } = theme;
   const iconOn = (background: string): string => readableColor(background, [palette.white, palette.neutralPrimary], MIN_GRAPHIC_CONTRAST);

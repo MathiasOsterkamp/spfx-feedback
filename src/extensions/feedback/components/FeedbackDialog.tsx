@@ -33,29 +33,22 @@ export interface IFeedbackDialogProps {
   mailService: MailService;
   recipientService: RecipientService;
   setupService: SetupService;
-  /** Current user may open the settings (gear icon): at least "Design" permission on the site. */
+  /** Gear icon: at least "Design" permission on the site. */
   canConfigure: boolean;
-  /** Current user may store entries in the settings list (once it is set up). */
+  /** May store entries in the settings list (once it is set up). */
   canSaveSettings: boolean;
-  /** The page on which the dialog was opened (item of the Site Pages library). */
   page: IPageInfo;
-  /** Pre-filled value of the URL field. */
   pageUrl: string;
   onDismiss: () => void;
 }
 
-/** Default width of the dialog; on wide screens it grows up to this width. */
 const DIALOG_MAX_WIDTH = 1100;
 
-/** Share of the window width the dialog takes (up to DIALOG_MAX_WIDTH). */
 const DIALOG_WIDTH = '90vw';
 
 /**
- * Responsive: 90 % of the window width up to 1100 px; below 480 px (phones) full screen.
- *
- * Passed as Dialog "styles" (not modalProps.styles): Fluent's Dialog sets "width: auto" in its own
- * "@media (min-width: 480px)" rule, which shrinks the dialog to its content. Dialog styles are merged
- * with these defaults, so the same media query here overrides it.
+ * Dialog "styles", not modalProps.styles: Fluent sets "width: auto" in its own "@media (min-width: 480px)" rule,
+ * which shrinks the dialog to its content; only the same media query here overrides it. Phones: full screen.
  */
 const DIALOG_STYLES: Partial<IDialogStyles> = {
   main: {
@@ -76,20 +69,14 @@ const DIALOG_STYLES: Partial<IDialogStyles> = {
   }
 };
 
-/** Separator for several addresses in one field (multi-value lookup field). */
 const EMAIL_SEPARATOR = '; ';
 
 type Status = 'editing' | 'sending' | 'sent' | 'failed';
 
-/** Anything with a focus() method: TextField and Dropdown expose it via componentRef. */
+/** TextField and Dropdown expose focus() via componentRef. */
 interface IFocusable { focus: () => void; }
 
-/**
- * Dialog "Feedback geben / Inhalte melden": left the request, right the content responsibility
- * (recipients, pre-filled from the page's contact field and the web's property bag, editable).
- *
- * The component is mounted anew for every opening, so the form always starts fresh.
- */
+/** Mounted anew for every opening, so the form always starts fresh. */
 export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (props: IFeedbackDialogProps) => {
   const {
     origin, policy, settingsService, mailService, recipientService, setupService,
@@ -108,18 +95,15 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
   const [status, setStatus] = React.useState<Status>('editing');
   /** Errors are shown only after the first attempt to send, then they update while typing. */
   const [showErrors, setShowErrors] = React.useState(false);
-  /** Settings of the site (code configuration and settings list); undefined while loading. */
+  /** undefined while loading. */
   const [site, setSite] = React.useState<ISiteSettings | undefined>(undefined);
-  /** undefined while the default recipients are loading. */
+  /** undefined while loading. */
   const [defaults, setDefaults] = React.useState<IRecipientDefaults | undefined>(undefined);
-  /** Incremented after a change in the settings view: reads settings and recipients again. */
+  /** Incremented after a settings change: reloads settings and recipients. */
   const [reloadCount, setReloadCount] = React.useState(0);
-  /**
-   * Form, preview of the mail (before sending) or settings view (gear icon).
-   * The form keeps its input while the preview or the settings are shown.
-   */
+  /** The form keeps its input while the preview or the settings are shown. */
   const [view, setView] = React.useState<'form' | 'preview' | 'settings'>('form');
-  /** The mail shown in the preview; exactly this mail is sent. */
+  /** Exactly this mail is sent. */
   const [preview, setPreview] = React.useState<IMail | undefined>(undefined);
 
   const fieldRefs = React.useRef<{ [K in FeedbackField]?: IFocusable | null }>({});
@@ -130,8 +114,7 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
   /** Addresses last pre-filled: after a change in the settings an unchanged field takes the new value. */
   const prefilled = React.useRef({ contactEmail: '', mailboxEmail: '' });
 
-  // Load the settings of the site, then the contact person of the page and the shared mailbox of the web.
-  // A field the user has typed into is not overwritten.
+  // Settings first, then the recipients; a field the user has typed into is not overwritten.
   React.useEffect(() => {
     settingsService.load()
       .then((loadedSite: ISiteSettings) => {
@@ -163,10 +146,9 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
     setReloadCount((count: number) => count + 1);
   };
 
-  /** Until the settings list is read, the code configuration applies (categories are not selectable yet). */
+  /** Until the settings list is read, the code configuration applies (categories not selectable yet). */
   const settings = site ? site.settings : settingsService.base;
   const loading = !defaults;
-  /** Hint below an address field: loading, or nothing stored in SharePoint. */
   const hintFor = (found: boolean, missingText: string): string | undefined =>
     loading ? strings.loadingRecipients : (found ? undefined : missingText);
 
@@ -174,7 +156,7 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
   const busy = status === 'sending';
   const done = status === 'sent';
 
-  // After sending successfully only the confirmation and "Schließen" remain: move the focus there.
+  // After sending only the confirmation and "Schließen" remain: move the focus there.
   React.useEffect(() => {
     if (done && closeButton.current) {
       closeButton.current.focus();
@@ -203,7 +185,6 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
     fieldRefs.current[field] = component;
   };
 
-  /** Checks the form and shows the mail as it will be sent. */
   const showPreview = (): void => {
     if (busy || done || !site) {
       return;
@@ -223,7 +204,6 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
     setView('preview');
   };
 
-  /** Sends the mail of the preview. */
   const send = (): void => {
     if (busy || done || !preview) {
       return;
@@ -244,8 +224,7 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
 
   const showSettings = canConfigure && view === 'settings';
   const showPreviewView = view === 'preview' && !!preview;
-  // Gear icon next to the close button, only for users who may configure. The settings view has its own
-  // "Back" button (it asks before discarding unsaved changes), so the gear is shown in the form only.
+  // Gear in the form only: the settings view has its own "Back" (asks before discarding unsaved changes).
   const topButtons: IButtonProps[] = canConfigure && view === 'form' && !busy && !done ? [{
     iconProps: { iconName: 'Settings' },
     title: strings.settingsOpen,
@@ -264,7 +243,7 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
         closeButtonAriaLabel: strings.close,
         topButtonsProps: topButtons
       }}
-      // isBlocking: a click next to the dialog must not discard the input.
+      // A click next to the dialog must not discard the input.
       modalProps={{ isBlocking: true }}
       styles={DIALOG_STYLES}
       minWidth={300}
@@ -307,8 +286,8 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
         />
       ) : (
         <>
-          {/* noValidate: the browser's own validation bubbles would compete with the Fluent messages.
-              The footer is part of the form: Enter in a single-line field sends, i.e. shows the preview first (also in IE11). */}
+          {/* noValidate: browser bubbles would compete with the Fluent messages. Footer inside the form:
+              Enter in a single-line field submits, i.e. shows the preview (also in IE11). */}
           <form noValidate onSubmit={onFormSubmit}>
           {showErrors && hasErrors(errors) && (
             <MessageBar messageBarType={MessageBarType.warning} className={classNames.message}>{strings.errorForm}</MessageBar>
@@ -396,7 +375,6 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
                 inputMode="email"
                 autoComplete="off"
               />
-              <p className={classNames.hint}>{strings.responsibilityHint}</p>
             </fieldset>
           </div>
           <DialogFooter>

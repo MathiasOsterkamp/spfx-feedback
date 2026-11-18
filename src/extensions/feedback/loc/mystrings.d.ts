@@ -1,7 +1,4 @@
 declare interface IFeedbackApplicationCustomizerStrings {
-  /** Plural rule of the language for formatText: non-empty = 0 counts as singular (French). */
-  zeroIsSingular: string;
-
   buttonLabel: string;
   dialogTitle: string;
   close: string;
@@ -23,7 +20,6 @@ declare interface IFeedbackApplicationCustomizerStrings {
   contactPlaceholder: string;
   mailboxLabel: string;
   mailboxPlaceholder: string;
-  responsibilityHint: string;
   loadingRecipients: string;
   contactMissing: string;
   mailboxMissing: string;
@@ -40,7 +36,6 @@ declare interface IFeedbackApplicationCustomizerStrings {
   sendFailed: string;
   sendSucceeded: string;
 
-  /** Preview of the mail before sending. */
   previewSend: string;
   previewHeading: string;
   previewHint: string;
@@ -48,11 +43,9 @@ declare interface IFeedbackApplicationCustomizerStrings {
   previewCc: string;
   previewReplyTo: string;
   previewSubject: string;
-  /** Shown for an empty address line (e.g. no Cc). */
   previewNone: string;
   previewBack: string;
 
-  /** Settings view (gear icon). Templates with {0}: see loc/template.ts. */
   settingsOpen: string;
   settingsTitle: string;
   settingsBack: string;
@@ -71,7 +64,7 @@ declare interface IFeedbackApplicationCustomizerStrings {
   settingsTabRecipients: string;
   settingsTabTexts: string;
   settingsTabSetup: string;
-  /** Screen reader text of a tab with warning icon, {0} = tab name. */
+  /** {0} = tab name */
   settingsTabWarning: string;
   settingsContactHeading: string;
   settingsContactListLabel: string;

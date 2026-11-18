@@ -10,7 +10,7 @@ den Dialog „Feedback geben / Inhalte melden“:
 | Ihr Anliegen | Inhaltliche Verantwortung |
 |---|---|
 | Kategorie * (Auswahl) | Ansprechpartner (E-Mail-Adresse): aus der **Nachschlagespalte der Seite** (Liste mit Titel und E-Mail) |
-| Betreff * | Funktionspostfach (E-Mail-Adresse): aus der **Einstellungsliste der Website** (oder dem Property Bag, je nach Konfiguration) || URL * (vorbelegt mit der aktuellen Seiten-URL) | |
+| Betreff * | Funktionspostfach (E-Mail-Adresse): aus der **Einstellungsliste der Website** || URL * (vorbelegt mit der aktuellen Seiten-URL) | |
 | Beschreibung * | |
 
 Die Adressen werden beim Öffnen des Dialogs geladen und vorbelegt. Sie bleiben änderbar, mehrere Adressen werden mit `;` getrennt.
@@ -86,13 +86,12 @@ Die Eigenschaften der Custom Action enthalten nur `logLevel`.
 | `contact.list` | Liste mit den Ansprechpartnern: `url` (immer `Lists/<Name>`) und `title` | `Lists/Ansprechpartner`, „Ansprechpartner“ | `Ansprechpartner-Liste` (Name in der URL) |
 | `contact.emailColumn` | E-Mail-Spalte der Liste (einzeiliger Text): `internalName`, `displayName` | `Email`, „E-Mail“ | – |
 | `settingsList` | Einstellungsliste: `url` (immer `Lists/<Name>`), `title`, Wertspalte `valueColumn` und die Titel der Einträge (`keys`) | `Lists/FeedbackEinstellungen`, Spalte `Wert` | – |
-| `mailbox.storage` | **Speicherort des Funktionspostfachs:** `list` = Einstellungsliste, `propertyBag` = Property Bag der Website | `list` | – |
-| `mailbox.key` | Titel des Eintrags in der Einstellungsliste bzw. Schlüssel im Property Bag | `Funktionspostfach` | `Funktionspostfach` (bei `list`) |
+| `mailbox.key` | Titel des Eintrags für das Funktionspostfach in der Einstellungsliste | `Funktionspostfach` | `Funktionspostfach` |
 | `languages` | Sprachen mit `label` (Name in der Sprachauswahl der Einstellungen), `categories`, `mailSubject` und `mailBody`, siehe unten | `de-de`, `en-us`, `fr-fr` | je Sprache: `Kategorien (de-de)` (eine pro Zeile), `Mail-Betreff (de-de)`, `Mail-Text (de-de)` |
 | `mail.cc`, `bcc`, `from`, `replyToReporter` | Weitere Teile der Mail, siehe unten | – | – |
 | `defaultLanguage` | Sprache, die gilt, wenn die Oberflächensprache zu keiner Sprache passt | `de-de` | – |
 
-Nicht in die Einstellungsliste gehören: die Einstellungsliste selbst und der Speicherort des Postfachs (die Extension braucht sie, um
+Nicht in die Einstellungsliste gehören: die Einstellungsliste selbst und der Titel des Postfach-Eintrags (die Extension braucht sie, um
 die Liste zu finden), die E-Mail-Spalte und die Sicherheitsregeln (`securityConfig.ts`, Websitebesitzer sollen sie nicht lockern können).
 
 **Sprachen.** Kategorien und Mailvorlage werden pro Sprache gepflegt. Die Standardwerte stehen in `languages` in `feedbackConfig.ts`
@@ -134,28 +133,13 @@ Nicht möglich über diese API: Anhänge, Priorität, Text-Alternative zum HTML.
 
 **Ansprechpartner:** Die Seite verweist über die Nachschlagespalte auf einen oder mehrere Einträge der Liste. Angezeigt wird der Titel,
 gelesen wird die E-Mail-Spalte. Eine Zelle darf mehrere Adressen enthalten, getrennt mit `;`. Beim Öffnen des Dialogs laufen
-zuerst 1 Request für die Einstellungsliste (enthält bei `list` auch das Funktionspostfach), dann 4 Requests für den Ansprechpartner:
-Schema der Spalte, dann parallel Wert und Schema der E-Mail-Spalte, dann die Einträge. Bei `propertyBag` kommt 1 Request für das
-Funktionspostfach dazu. Alles wird pro Seitenaufruf zwischengespeichert.
+zuerst 1 Request für die Einstellungsliste (enthält auch das Funktionspostfach), dann 4 Requests für den Ansprechpartner:
+Schema der Spalte, dann parallel Wert und Schema der E-Mail-Spalte, dann die Einträge. Alles wird pro Seitenaufruf zwischengespeichert.
 
-**Funktionspostfach: zwei Speicherorte, fest umgeschaltet über `mailbox.storage`.**
-
-| | `list` (Standard) | `propertyBag` |
-|---|---|---|
-| Wo | Eintrag mit Titel `mailbox.key` in der Einstellungsliste, Wert in der Spalte `settingsList.valueColumn` | Schlüssel `mailbox.key` im Property Bag der Website |
-| Ändern im Zahnrad | Ab Entwurfsrechten, sobald die Einstellungsliste eingerichtet ist | Nur Besitzer |
-| Technik | REST, auch in SharePoint Online ohne benutzerdefinierte Skripts | CSOM, in SharePoint Online nur mit erlaubten benutzerdefinierten Skripts |
-| Direkt ändern | In der Liste, auch durch Mitglieder mit Bearbeiten-Rechten. Wer das nicht will, schränkt die Berechtigungen der Liste ein. | PowerShell, siehe unten |
-
-Bei `list` brauchen Besucher Leserechte auf der Einstellungsliste (bei vererbten Rechten gegeben). Gelesen wird über
-`web/getlist(...)`, das gibt es ab SharePoint 2016. Ein Wechsel des Speicherorts übernimmt den bisherigen Wert nicht.
-
-Nur bei `propertyBag`: Funktionspostfach per PowerShell setzen:
-
-```powershell
-Connect-PnPOnline -Url https://intranet/sites/team -CurrentCredentials
-Set-PnPPropertyBagValue -Key 'Funktionspostfach' -Value 'intranet@firma.de'   # SPO ggf. vorher: Set-PnPNoScriptSite -Disable
-```
+**Funktionspostfach:** Eintrag mit dem Titel `mailbox.key` in der Einstellungsliste, Wert in der Spalte `settingsList.valueColumn`.
+Geändert wird es im Zahnrad (Tab „Empfänger“, ab Entwurfsrechten, sobald die Einstellungsliste eingerichtet ist) oder direkt in der
+Liste. Reines REST, funktioniert also auch in SharePoint Online ohne benutzerdefinierte Skripts. Besucher brauchen Leserechte auf der
+Einstellungsliste (bei vererbten Rechten gegeben). Gelesen wird über `web/getlist(...)`, das gibt es ab SharePoint 2016.
 
 ## Einstellungen im Dialog (Zahnrad)
 
@@ -170,12 +154,12 @@ Ein Tab mit Fehlern oder fehlender Einrichtung zeigt ein Warnsymbol.
 
 | Tab | Inhalt |
 |---|---|
-| **Empfänger** | **Ansprechpartner:** Liste mit Ansprechpartnern (Dropdown mit den benutzerdefinierten Listen der Website; Textfeld, falls die Listen nicht gelesen werden können), Nachschlagespalte (Dropdown mit den Nachschlagespalten von „Websiteseiten“: sichtbar, nicht schreibgeschützt, ohne Systemspalten; die Standardspalte aus dem Code steht immer oben, auch wenn es sie noch nicht gibt; Textfeld, falls die Spalten nicht gelesen werden können), Ansprechpartner dieser Seite mit Link „Seiteneigenschaften bearbeiten“. Gibt es die Nachschlagespalte schon und zeigt sie auf eine andere Liste, steht ein Hinweis darunter: Eine andere Liste wirkt erst mit einer neuen Spalte. **Funktionspostfach:** Textfeld mit dem gespeicherten Wert. Bei `list` reichen Entwurfsrechte, bei `propertyBag` nur Besitzer (`ManageWeb`), sonst ist das Feld schreibgeschützt. |
+| **Empfänger** | **Ansprechpartner:** Liste mit Ansprechpartnern (Dropdown mit den benutzerdefinierten Listen der Website; Textfeld, falls die Listen nicht gelesen werden können), Nachschlagespalte (Dropdown mit den Nachschlagespalten von „Websiteseiten“: sichtbar, nicht schreibgeschützt, ohne Systemspalten; die Standardspalte aus dem Code steht immer oben, auch wenn es sie noch nicht gibt; Textfeld, falls die Spalten nicht gelesen werden können), Ansprechpartner dieser Seite mit Link „Seiteneigenschaften bearbeiten“. Gibt es die Nachschlagespalte schon und zeigt sie auf eine andere Liste, steht ein Hinweis darunter: Eine andere Liste wirkt erst mit einer neuen Spalte. **Funktionspostfach:** Textfeld mit dem gespeicherten Wert. Ohne Entwurfsrechte ist das Feld schreibgeschützt. |
 | **Formular und E-Mail** | Sprachauswahl (vorausgewählt ist die Sprache der Oberfläche; angepasste Sprachen sind markiert), darunter **Kategorien** sowie **Betreff** und **Text** der Benachrichtigung in dieser Sprache (reiner Text, HTML-Tags werden abgelehnt). Unter den Feldern: „Standardwert zum Bearbeiten einfügen“ (leeres Feld) bzw. „Standardwert wiederherstellen“ (eigener Wert). Als „angepasst“ gilt eine Sprache, deren Werte vom Standard abweichen. |
 | **Einrichtung** | Checkliste: Einstellungsliste (ausgeblendet; fehlen Wertspalte oder Einträge, steht sie auf „unvollständig“), Liste mit Ansprechpartnern, E-Mail-Spalte, Nachschlagespalte in „Websiteseiten“, jeweils *vorhanden*, *fehlt*, *sichtbar*, *unvollständig* oder *Fehler*. **Einrichten** legt alles Fehlende in einem Schritt an, **Erneut prüfen** liest den Stand neu. |
 
 Leere Felder zeigen grau den Standardwert aus dem Code und speichern nichts. **Speichern** unten rechts schreibt alle geänderten Felder
-aller Tabs und Sprachen in die Einstellungsliste (bzw. das Postfach in den Property Bag). Vorher geprüft werden Listen- und Spaltennamen
+aller Tabs und Sprachen in die Einstellungsliste, auch das Funktionspostfach. Vorher geprüft werden Listen- und Spaltennamen
 (nur erlaubte Zeichen), Anzahl und Länge der Kategorien, Länge der Vorlage und unbekannte Platzhalter. Bei einem Fehler springt die
 Ansicht zu Tab und Sprache des ersten fehlerhaften Felds. Solange die Einstellungsliste nicht eingerichtet ist, sind die Felder
 schreibgeschützt; ein Hinweis verlinkt auf den Tab „Einrichtung“. „Zurück zum Formular“ fragt nach, bevor ungespeicherte Änderungen
@@ -211,9 +195,6 @@ Technik und Voraussetzungen:
   Einstellungsliste) werden danach per MERGE gesetzt.
 - Spalten: REST `fields/createfieldasxml`. E-Mail: Text, Pflichtfeld, in Standardinhaltstyp und Standardansicht.
   Nachschlagespalte: `ShowField="Title"`, alle Inhaltstypen.
-- Funktionspostfach: REST kann den Property Bag nicht schreiben, deshalb ein CSOM-Request an `/_vti_bin/client.svc/ProcessQuery`
-  (`web.AllProperties[key] = value; web.Update()`). In **SharePoint Online** schlägt das auf Websites ohne benutzerdefinierte Skripts
-  (Standard bei modernen Team- und Kommunikationswebsites) mit „Zugriff verweigert“ fehl. Dann den Wert per PowerShell setzen.
 - Was angezeigt wird, entscheidet der Browser anhand der Berechtigungen im Seitenkontext. SharePoint prüft sie beim Speichern erneut.
 
 ## Dialog
@@ -250,8 +231,8 @@ nicht über `modalProps.styles`, weil Fluent ab 480 px selbst `width: auto` setz
     ├── config/securityConfig.ts         Zentrale Sicherheitsregeln
     ├── services/MailService.ts          SharePoint-REST SendEmail (To, CC, BCC, From, Reply-To)
     ├── services/SettingsService.ts      Einstellungsliste lesen und auf die Code-Konfiguration anwenden
-    ├── services/RecipientService.ts     Ansprechpartner (Seite) und Funktionspostfach (Liste oder Property Bag), mit Status
-    ├── services/SetupService.ts         Einrichtung prüfen und anlegen, Einstellungen speichern, Postfach im Property Bag (CSOM)
+    ├── services/RecipientService.ts     Ansprechpartner (Seite) und Funktionspostfach (Einstellungsliste), mit Status
+    ├── services/SetupService.ts         Einrichtung prüfen und anlegen, Einstellungen speichern
     ├── components/SettingsView.tsx      Einstellungen und Einrichtung (Zahnrad, ab Entwurfsrechten)
     ├── utils/mail.ts                    Mail aus der Vorlage (Platzhalter, Escaping)
     ├── utils/validation.ts              Pflichtfelder, URL, E-Mail

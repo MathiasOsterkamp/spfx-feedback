@@ -12,33 +12,27 @@ import { SetupService } from '../services/SetupService';
 import * as strings from 'FeedbackApplicationCustomizerStrings';
 
 export interface IFeedbackProps {
-  /** Theme of the SharePoint site, calculated by the extension (see utils/theme.ts) */
   theme: ITheme;
-  /** Current page; undefined if it is not an item of the Site Pages library -> no button. */
+  /** undefined if not an item of the Site Pages library -> no button. */
   page: IPageInfo | undefined;
   origin: IFeedbackOrigin;
   policy: ISecurityPolicy;
-  /** Code configuration and settings list of the site (read when the dialog opens). */
   settingsService: SettingsService;
   mailService: MailService;
   recipientService: RecipientService;
   setupService: SetupService;
-  /** Current user may open the settings (gear icon): at least "Design" permission on the site. */
+  /** Gear icon: at least "Design" permission on the site. */
   canConfigure: boolean;
-  /** Current user may store entries in the settings list (once it is set up). */
+  /** May store entries in the settings list (once it is set up). */
   canSaveSettings: boolean;
 }
 
-/**
- * Address of the current page without query string and fragment: removes parameters that do not
- * belong to the page (e.g. the debug parameters loadSPFX/debugManifestsFile/customActions).
- */
+/** Without query and fragment: drops parameters not belonging to the page (e.g. loadSPFX/debugManifestsFile). */
 function currentPageUrl(): string {
   const location = window.location;
   return location.protocol + '//' + location.host + location.pathname;
 }
 
-/** Floating feedback button; opens the dialog "Feedback geben / Inhalte melden". */
 export const Feedback: React.FunctionComponent<IFeedbackProps> = (props: IFeedbackProps) => {
   const { theme, page, ...dialogProps } = props;
   const [openedOn, setOpenedOn] = React.useState<{ page: IPageInfo; url: string } | undefined>(undefined);

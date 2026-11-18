@@ -3,13 +3,13 @@ import { formatText } from '../loc/template';
 import { FeedbackErrors, FeedbackField, IFeedbackForm } from '../models/IFeedback';
 import * as strings from 'FeedbackApplicationCustomizerStrings';
 
-/** Pragmatic check: local part, @, domain with at least one dot. No spaces, brackets or separators. */
+/** Pragmatic check; no spaces, brackets or separators. */
 const EMAIL = /^[^\s@<>()[\]\\,;:"]+@([a-z0-9-]+\.)+[a-z]{2,}$/i;
 
-/** Fields in the order of the form (left column, then right column). Used to focus the first error. */
+/** Order of the form; used to focus the first error. */
 export const FIELD_ORDER: FeedbackField[] = ['category', 'subject', 'url', 'description', 'contactEmail', 'mailboxEmail'];
 
-/** Returns an error message or '' for a valid address. */
+/** Returns an error message or ''. */
 export function checkEmail(email: string, policy: ISecurityPolicy): string {
   if (email.length > policy.maxEmailLength || !EMAIL.test(email)) {
     return strings.errorEmail;
@@ -22,13 +22,11 @@ export function checkEmail(email: string, policy: ISecurityPolicy): string {
   return '';
 }
 
-/** Splits an address field ("a@x.de; b@y.de") into trimmed, non-empty addresses. */
 export function splitEmails(value: string): string[] {
   return value.split(/[;,]/).map((email: string) => email.trim()).filter((email: string) => !!email);
 }
 
-/** Checks every address of an address field. Returns the first error or ''. */
-export function checkEmailList(value: string, policy: ISecurityPolicy): string {
+function checkEmailList(value: string, policy: ISecurityPolicy): string {
   const emails = splitEmails(value);
   if (emails.length > policy.maxRecipientsPerField) {
     return formatText(strings.errorTooManyEmails, policy.maxRecipientsPerField);
@@ -42,25 +40,21 @@ export function checkEmailList(value: string, policy: ISecurityPolicy): string {
   return '';
 }
 
-/**
- * An address field as typed (several addresses separated by ";" or ","): at most maxTextLength characters,
- * then every address. The pre-filled value from SharePoint can be longer than the field allows to type.
- */
+/** Length is checked too: the pre-filled value from SharePoint can be longer than the field allows to type. */
 export function checkAddressField(value: string, policy: ISecurityPolicy): string {
   return value.trim().length > policy.maxTextLength
     ? formatText(strings.errorTooLong, policy.maxTextLength)
     : checkEmailList(value, policy);
 }
 
-/** Only absolute http(s) addresses with a host. */
-export function checkUrl(url: string, policy: ISecurityPolicy): string {
+/** Only absolute http(s) addresses (the URL becomes a link in the mail). */
+function checkUrl(url: string, policy: ISecurityPolicy): string {
   if (url.length > policy.maxTextLength) {
     return formatText(strings.errorTooLong, policy.maxTextLength);
   }
   return /^https?:\/\/[^\s/?#]+[^\s]*$/i.test(url) ? '' : strings.errorUrl;
 }
 
-/** Validates the whole form. Required: category, subject, URL, description and the contact person; the shared mailbox is optional. */
 export function validateForm(form: IFeedbackForm, categories: string[], policy: ISecurityPolicy): FeedbackErrors {
   const errors: FeedbackErrors = {};
   const subject = form.subject.trim();
@@ -85,13 +79,12 @@ export function validateForm(form: IFeedbackForm, categories: string[], policy: 
     errors.description = formatText(strings.errorTooLong, policy.maxDescriptionLength);
   }
 
-  // Contact person: required (recipient of the mail, To). Shared mailbox: optional (copy, Cc).
+  // Contact person (To) is required, shared mailbox (Cc) optional.
   errors.contactEmail = splitEmails(form.contactEmail).length === 0
     ? strings.errorRecipient
     : checkAddressField(form.contactEmail, policy);
   errors.mailboxEmail = checkAddressField(form.mailboxEmail, policy);
 
-  // Remove empty entries: a field without a key is valid.
   FIELD_ORDER.forEach((field: FeedbackField) => {
     if (!errors[field]) { delete errors[field]; }
   });

@@ -3,11 +3,8 @@ import { logError, logInfo, logVerbose } from '../utils/logging';
 import { IMail } from '../utils/mail';
 
 /**
- * Sends mails via the SharePoint REST endpoint SP.Utilities.Utility.SendEmail.
- *
- * - The sender is SharePoint (the outgoing mail address of the farm or tenant).
- * - SharePoint 2019: outgoing e-mail (SMTP) must be configured in Central Administration.
- * - SharePoint Online: only recipients inside the organization receive the mail.
+ * SP.Utilities.Utility.SendEmail: the sender is SharePoint. SharePoint 2019 needs outgoing SMTP configured in
+ * Central Administration; SharePoint Online delivers only to recipients inside the organization.
  */
 export class MailService {
   private readonly endpoint: string;
@@ -16,10 +13,9 @@ export class MailService {
     this.endpoint = webAbsoluteUrl.replace(/\/+$/, '') + '/_api/SP.Utilities.Utility.SendEmail';
   }
 
-  /** Resolves when SharePoint has accepted the mail, rejects otherwise (details are logged, not shown). */
+  /** Rejects if SharePoint does not accept the mail (details are logged, not shown). */
   public send(mail: IMail): Promise<void> {
-    // The endpoint expects the verbose format with __metadata. SPHttpClient sets "OData-Version: 4.0"
-    // by default, under which __metadata is rejected - the empty header suppresses it.
+    // Verbose format with __metadata: rejected under SPHttpClient's default "OData-Version: 4.0" (header emptied below).
     const properties: { [key: string]: unknown } = {
       __metadata: { type: 'SP.Utilities.EmailProperties' },
       To: { results: mail.to },

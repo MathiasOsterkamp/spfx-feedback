@@ -1,10 +1,10 @@
 import { ConsoleListener, Logger, LogLevel } from '@pnp/logging';
 
-/** Log levels configurable in the extension properties (ClientSideComponentProperties). */
+/** Configurable in the extension properties. */
 export type LogLevelName = 'verbose' | 'info' | 'warning' | 'error' | 'off';
 
-export const LOG_LEVEL_NAMES: LogLevelName[] = ['verbose', 'info', 'warning', 'error', 'off'];
-export const DEFAULT_LOG_LEVEL: LogLevelName = 'warning';
+const LOG_LEVEL_NAMES: LogLevelName[] = ['verbose', 'info', 'warning', 'error', 'off'];
+const DEFAULT_LOG_LEVEL: LogLevelName = 'warning';
 
 const LEVELS: { [K in LogLevelName]: LogLevel } = {
   verbose: LogLevel.Verbose,
@@ -23,10 +23,7 @@ export function sanitizeLogLevel(value: unknown): LogLevelName {
   return index >= 0 ? LOG_LEVEL_NAMES[index] : DEFAULT_LOG_LEVEL;
 }
 
-/**
- * Writes the log to the browser console from the given level on.
- * The PnP logger is shared by all components on a page: the level set last applies.
- */
+/** The PnP logger is shared by all components on a page: the level set last applies. */
 export function configureLogging(level: LogLevelName): void {
   if (!subscribed) {
     Logger.subscribe(new ConsoleListener());
@@ -39,7 +36,6 @@ function write(level: LogLevel, message: string, data?: unknown): void {
   Logger.log({ level, message: PREFIX + message, data });
 }
 
-/** Details for troubleshooting, e.g. individual requests. */
 export function logVerbose(message: string, data?: unknown): void {
   write(LogLevel.Verbose, message, data);
 }
@@ -52,7 +48,6 @@ export function logWarning(message: string, data?: unknown): void {
   write(LogLevel.Warning, message, data);
 }
 
-/** Technical details belong here, not in the UI. */
 export function logError(message: string, data?: unknown): void {
   write(LogLevel.Error, message, data);
 }

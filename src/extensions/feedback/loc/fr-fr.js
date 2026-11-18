@@ -1,7 +1,5 @@
 define([], function () {
   return {
-    zeroIsSingular: '1',
-
     buttonLabel: 'Donner un avis / signaler un contenu',
     dialogTitle: 'Donner un avis / signaler un contenu',
     close: 'Fermer',
@@ -23,7 +21,6 @@ define([], function () {
     contactPlaceholder: 'jean.dupont@example.fr',
     mailboxLabel: 'Boîte aux lettres partagée (adresse e-mail, facultative)',
     mailboxPlaceholder: 'boite@example.fr',
-    responsibilityHint: 'Votre signalement est envoyé à l’interlocuteur (obligatoire). La boîte aux lettres partagée en reçoit une copie (Cc). Séparez plusieurs adresses par un point-virgule.',
     loadingRecipients: 'Chargement …',
     contactMissing: 'Aucun interlocuteur n’est indiqué pour cette page.',
     mailboxMissing: 'Aucune boîte aux lettres partagée n’est indiquée pour ce site.',

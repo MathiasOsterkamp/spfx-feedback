@@ -4,15 +4,11 @@ import { IMail } from '../utils/mail';
 import * as strings from 'FeedbackApplicationCustomizerStrings';
 
 export interface IMailPreviewProps {
-  /** The mail exactly as it will be sent (buildMail). */
+  /** Exactly as it will be sent (buildMail). */
   mail: IMail;
 }
 
-/**
- * Preview of the notification mail before it is sent: header like in a mail program (subject, recipients,
- * copy, reply-to) and the body as the recipients see it. Not shown: the sender (fixed by SharePoint) and BCC
- * (those recipients are hidden from everyone, also from the reporter).
- */
+/** Not shown: the sender (fixed by SharePoint) and BCC (hidden from everyone, also from the reporter). */
 export const MailPreview: React.FunctionComponent<IMailPreviewProps> = (props: IMailPreviewProps) => {
   const { mail } = props;
   const classNames = usePreviewClassNames();
@@ -34,7 +30,6 @@ export const MailPreview: React.FunctionComponent<IMailPreviewProps> = (props: I
     }
   };
 
-  /** Addresses as chips; an empty list shows "none". */
   const addresses = (emails: string[]): React.ReactNode => (emails.length === 0
     ? <span className={classNames.none}>{strings.previewNone}</span>
     : emails.map((email: string) => <span key={email} className={classNames.address}>{email}</span>));

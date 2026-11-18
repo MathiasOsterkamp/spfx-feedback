@@ -1,7 +1,5 @@
 define([], function () {
   return {
-    zeroIsSingular: '',
-
     buttonLabel: 'Feedback geben / Inhalte melden',
     dialogTitle: 'Feedback geben / Inhalte melden',
     close: 'Schließen',
@@ -23,7 +21,6 @@ define([], function () {
     contactPlaceholder: 'max.mustermann@example.de',
     mailboxLabel: 'Funktionspostfach (E-Mail-Adresse, optional)',
     mailboxPlaceholder: 'funktionspostfach@example.de',
-    responsibilityHint: 'Ihre Meldung geht an den Ansprechpartner (Pflicht). Das Funktionspostfach erhält eine Kopie (Cc). Mehrere Adressen mit Semikolon trennen.',
     loadingRecipients: 'Wird geladen …',
     contactMissing: 'Für diese Seite ist kein Ansprechpartner hinterlegt.',
     mailboxMissing: 'Für diese Website ist kein Funktionspostfach hinterlegt.',

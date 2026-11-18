@@ -6,28 +6,23 @@ import { IFeedbackSettings, ILanguageSettings, IMailboxSettings, IMailSettings, 
 
 const COLOR_PATTERN = /^(#[0-9a-f]{3,8}|rgba?\(\s*[\d.\s,%]+\)|hsla?\(\s*[\d.\s,%deg]+\)|[a-z]{3,30})$/i;
 
-/**
- * Internal field names consist of letters, digits and underscores (special characters are encoded
- * as _xHHHH_). The names are inserted into REST URLs, so nothing else is allowed.
- */
+/** Internal field names (special characters encoded as _xHHHH_). Inserted into REST URLs, so nothing else is allowed. */
 export const FIELD_NAME = /^[A-Za-z_][A-Za-z0-9_]{0,254}$/;
 
-/** Name of a list in its URL ("Lists/<name>"); it becomes part of REST URLs. */
+/** List name in "Lists/<name>"; becomes part of REST URLs. */
 export const LIST_NAME = /^[A-Za-z0-9_-]{1,128}$/;
 
-/** Allows only valid CSS color values (prevents CSS injection via color values). */
+/** Prevents CSS injection via color values. */
 export function safeColor(value: unknown, fallback: string): string {
   const v = typeof value === 'string' ? value.trim() : '';
   return COLOR_PATTERN.test(v) ? v : fallback;
 }
 
-/** Removes control characters (incl. line breaks) and surrounding whitespace. */
 export function singleLine(value: string): string {
   // eslint-disable-next-line no-control-regex -- control characters are exactly what is removed here
   return value.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim();
 }
 
-/** Shape of config/feedbackConfig.ts (checked by createSettings). */
 export interface IFeedbackConfig {
   contact: {
     pageColumn: { internalName: string; displayName: string };
@@ -53,15 +48,14 @@ export interface IFeedbackConfig {
   defaultLanguage: string;
 }
 
-/** Language code as in the configuration, lower case: "de", "de-de", "zh-hant-tw". */
+/** Lower case: "de", "de-de", "zh-hant-tw". */
 const LANGUAGE_CODE = /^[a-z]{2,3}(-[a-z0-9]{2,8})*$/;
 
-/** Title of a per-language entry in the settings list: "Kategorien (de-de)". Empty key = no entry. */
+/** "Kategorien (de-de)". Empty key = no entry. */
 export function languageKey(key: string, language: string): string {
   return key ? `${key} (${language})` : '';
 }
 
-/** Titles of all entries of the settings list the settings use (per-language entries for every language). */
 export function settingEntryKeys(settings: IFeedbackSettings): string[] {
   const keys = settings.settingsList.keys;
   return settings.languages
@@ -71,11 +65,7 @@ export function settingEntryKeys(settings: IFeedbackSettings): string[] {
     .filter((key: string) => !!key);
 }
 
-/**
- * All entries of the settings list with the defaults of the code configuration, as "Set up" creates them:
- * contact list (name in its URL), lookup column, shared mailbox (empty) and per language
- * categories (one per line), mail subject and mail text.
- */
+/** All settings list entries with the code defaults, as "Set up" creates them. */
 export function defaultSettingEntries(base: IFeedbackSettings): IStoredValues {
   const keys = base.settingsList.keys;
   const entries: IStoredValues = {};
@@ -93,7 +83,6 @@ export function defaultSettingEntries(base: IFeedbackSettings): IStoredValues {
   return entries;
 }
 
-/** Used if the configuration contains no usable template (logged as error). */
 const FALLBACK_TEMPLATE = { subject: '[Feedback] {{subject}}', body: '{{category}}: {{subject}}\n{{url}}\n\n{{description}}\n\n{{reporterName}} {{reporterEmail}}' };
 
 /** HTML tags: mail templates are plain text, tags would appear literally in the mail. */
@@ -103,14 +92,11 @@ export function containsHtml(template: string): boolean {
   return HTML_TAG.test(template);
 }
 
-/** List URL relative to the site: "Lists/<name>" (name as in LIST_NAME). */
 const LIST_URL = /^Lists\/[A-Za-z0-9_-]{1,128}$/;
 
 /**
- * Checks the configuration from config/feedbackConfig.ts and picks the language (categories, mail template)
- * of the UI language. Configuration mistakes (invalid names) are logged as errors; the affected feature is
- * switched off instead of sending broken requests. The values of the settings list are applied later
- * (applyStoredValues).
+ * Checks config/feedbackConfig.ts and picks the UI language. Invalid names are logged and switch the
+ * affected feature off instead of sending broken requests.
  */
 export function createSettings(config: IFeedbackConfig, uiLanguage: string, policy: ISecurityPolicy): IFeedbackSettings {
   const contact = config.contact;
@@ -140,10 +126,7 @@ export function createSettings(config: IFeedbackConfig, uiLanguage: string, poli
   };
 }
 
-/**
- * Languages of the configuration with checked defaults. A language without usable categories or template
- * gets a minimal one (logged); without any usable language a minimal English entry applies.
- */
+/** Missing categories/template get a minimal one (logged); without any usable language a minimal English entry applies. */
 function createLanguages(config: IFeedbackConfig, policy: ISecurityPolicy): ILanguageSettings[] {
   const entries = asRecord(config.languages);
   const result: ILanguageSettings[] = [];
@@ -180,7 +163,6 @@ function createLanguages(config: IFeedbackConfig, policy: ISecurityPolicy): ILan
   return result;
 }
 
-/** Language for the UI language (see pickByLanguage), otherwise defaultLanguage, otherwise the first one. */
 function pickLanguage(languages: ILanguageSettings[], uiLanguage: string, defaultLanguage: string): ILanguageSettings {
   const byCode: { [code: string]: ILanguageSettings } = {};
   languages.forEach((language: ILanguageSettings) => { byCode[language.code] = language; });
@@ -220,15 +202,14 @@ function createMailboxSettings(config: IFeedbackConfig, settingsList: ISettingsL
 }
 
 /**
- * Applies the entries of the settings list to the code configuration. Empty entries keep the code value.
- * Invalid entries are logged and ignored - the settings view does not store them, but the list can be edited directly.
+ * Empty entries keep the code value. Invalid entries are logged and ignored - the settings view does not
+ * store them, but the list can be edited directly.
  */
 export function applyStoredValues(base: IFeedbackSettings, stored: IStoredValues, policy: ISecurityPolicy): IFeedbackSettings {
   const keys = base.settingsList.keys;
   const value = (key: string): string => (key && typeof stored[key] === 'string' ? stored[key].trim() : '');
   const ignored = (key: string): void => logError('Invalid value in the settings list, ignored', { key });
   const result: IFeedbackSettings = { ...base, mail: { ...base.mail } };
-  // Categories and mail template: the entries of the language that applies to the UI language.
   const categoriesKey = languageKey(keys.categories, base.language);
   const subjectKey = languageKey(keys.mailSubject, base.language);
   const bodyKey = languageKey(keys.mailBody, base.language);
@@ -249,7 +230,7 @@ export function applyStoredValues(base: IFeedbackSettings, stored: IStoredValues
     }
   }
 
-  // An empty internal name in the base means: the code configuration is invalid, the contact stays off.
+  // Empty internal name in base = invalid code configuration, the contact stays off.
   const columnName = value(keys.contactColumn);
   if (columnName && base.contactColumn.internalName) {
     if (!FIELD_NAME.test(columnName)) {
@@ -270,7 +251,6 @@ export function applyStoredValues(base: IFeedbackSettings, stored: IStoredValues
   return result;
 }
 
-/** Lines of a multi-line text value (categories: one per line). */
 export function splitLines(value: string): string[] {
   return value.split(/\r?\n/);
 }
@@ -293,7 +273,7 @@ function createMailSettings(config: IFeedbackConfig, language: ILanguageSettings
   };
 }
 
-/** Entry for the UI language: exact match ("de-de"), then same language prefix ("de-at" -> "de-de"). */
+/** Exact match ("de-de"), then same language prefix ("de-at" -> "de-de"). */
 function pickByLanguage<T>(entries: { [language: string]: T }, uiLanguage: string): T | undefined {
   const language = (uiLanguage || '').toLowerCase();
   if (entries[language]) {
@@ -304,10 +284,7 @@ function pickByLanguage<T>(entries: { [language: string]: T }, uiLanguage: strin
   return match ? entries[match] : undefined;
 }
 
-/**
- * Keeps the valid addresses of a value read from SharePoint (field or property bag) and logs the rest.
- * A text value may contain several addresses separated by ";" or ",".
- */
+/** Valid addresses of values read from SharePoint (separated by ";" or ","); the rest is logged. */
 export function validEmails(values: string[], source: string, policy: ISecurityPolicy): string[] {
   const seen: { [key: string]: boolean } = {};
   const result: string[] = [];
@@ -340,14 +317,14 @@ function safeFieldName(value: unknown, setting: string): string {
   return name;
 }
 
-/** Titles of settings list entries: single line, at most 255 characters (title column of a list). */
+/** At most 255 characters (Title column). */
 function safeEntryKey(value: unknown): string {
   const key = typeof value === 'string' ? singleLine(value) : '';
   return key.length <= 255 ? key : '';
 }
 
-/** Returns undefined if the value contains no usable category, so that the defaults apply. */
-export function safeCategories(value: unknown, policy: ISecurityPolicy): string[] | undefined {
+/** undefined if no usable category, so that the defaults apply. */
+function safeCategories(value: unknown, policy: ISecurityPolicy): string[] | undefined {
   if (!Array.isArray(value)) {
     return undefined;
   }

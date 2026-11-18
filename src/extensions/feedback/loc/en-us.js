@@ -1,7 +1,5 @@
 define([], function () {
   return {
-    zeroIsSingular: '',
-
     buttonLabel: 'Give feedback / report content',
     dialogTitle: 'Give feedback / report content',
     close: 'Close',
@@ -23,7 +21,6 @@ define([], function () {
     contactPlaceholder: 'jane.doe@example.com',
     mailboxLabel: 'Shared mailbox (e-mail address, optional)',
     mailboxPlaceholder: 'mailbox@example.com',
-    responsibilityHint: 'Your report is sent to the contact person (required). The shared mailbox receives a copy (Cc). Separate several addresses with a semicolon.',
     loadingRecipients: 'Loading …',
     contactMissing: 'No contact person is stored for this page.',
     mailboxMissing: 'No shared mailbox is stored for this site.',

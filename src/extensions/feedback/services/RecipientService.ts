@@ -7,29 +7,22 @@ import { asArray, IUntyped, odataEntity, odataItems } from '../utils/untyped';
 
 export const GUID = /^\{?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\}?$/i;
 
-/** JSON without metadata (OData v3 format), supported by SharePoint 2016/2019 and Online. */
+/** OData v3 JSON without metadata (SharePoint 2016/2019 and Online). */
 export const NOMETADATA = { headers: { 'Accept': 'application/json;odata=nometadata', 'OData-Version': '' } };
 
 const LOOKUP_TYPES = ['Lookup', 'LookupMulti'];
 
-/** Schema of a field, undefined if the list has no field with this internal name. */
 interface IFieldSchema {
   type: string;
   lookupList: string;
 }
 
-/** Values read from SharePoint before validation, or a status that ends the evaluation early. */
+/** Raw values before validation, or a status that ends the evaluation early. */
 type RawResult = string[] | RecipientStatus;
 
 /**
- * Reads the default recipients of the form:
- *
- * - Contact person: lookup column of the current page (Site Pages library, config contact.pageColumn or
- *   settings list). The e-mail column (config contact.emailColumn) of the selected entry(s) in the contact list is read.
- * - Shared mailbox (config mailbox): entry of the settings list (already read by SettingsService).
- *
- * The result carries a status, so that the form can tell "nothing stored for this page" from
- * "column missing" and offer the setup. Read only when the dialog opens, then cached for the page view.
+ * Default recipients: contact person (lookup column of the page -> e-mail column of the contact list) and shared
+ * mailbox (settings list). The status lets the form tell "nothing stored" from "column missing" and offer the setup.
  */
 export class RecipientService {
   private readonly api: string;
@@ -48,7 +41,6 @@ export class RecipientService {
       .then(([contact, mailbox]: [IRecipientSource, IRecipientSource]) => ({ contact, mailbox }));
   }
 
-  /** Forgets cached results, e.g. after a column was created. */
   public reset(): void {
     this.contactCache = {};
   }
@@ -63,13 +55,13 @@ export class RecipientService {
     if (!this.contactCache[key]) {
       this.contactCache[key] = this.readContact(page, settings)
         .catch((error: unknown) => {
-          // 404: the list the lookup column points to was deleted - a setup problem, fixed in the settings view.
+          // 404: the lookup target list was deleted - fixed by the setup.
           if ((error as { status?: number }).status === 404) {
             logWarning('The list of the contact lookup column does not exist, run the setup (gear icon)', { column });
             return source('missing');
           }
           logWarning('Contact person could not be read', { column, error: String(error) });
-          // Do not keep the failure: the next opening tries again.
+          // Not cached: the next opening tries again.
           delete this.contactCache[key];
           return source('error');
         });
@@ -77,11 +69,6 @@ export class RecipientService {
     return this.contactCache[key];
   }
 
-  /**
-   * 1. Schema of the lookup column in Site Pages (missing? lookup? which list?)
-   * 2. In parallel: IDs of the selected entries and the e-mail column of the contact list
-   * 3. The e-mail addresses of these entries
-   */
   private readContact(page: IPageInfo, settings: IFeedbackSettings): Promise<IRecipientSource> {
     const column = settings.contactColumn.internalName;
     const emailColumn = settings.contactEmailColumn.internalName;
@@ -113,25 +100,24 @@ export class RecipientService {
         const filter = encodeURIComponent(ids.map((id: number) => `Id eq ${id}`).join(' or '));
         return this.getJson(`${contactList}/items?$select=${emailColumn}&$filter=${filter}&$top=${ids.length}`)
           .then((json: unknown) => odataItems(json).reduce((all: string[], entry: IUntyped) => all.concat(textOf(entry[emailColumn])), []));
-      }).then((raw: RawResult) => ({ ...this.evaluate(raw, 'contact'), lookupListId }));
+      }).then((raw: RawResult) => this.evaluate(raw, 'contact'));
     });
   }
 
-  /** Entry of the settings list, already read by SettingsService: no request of its own. */
+  /** Already read by SettingsService: no request of its own. */
   private getMailbox(site: ISiteSettings): Promise<IRecipientSource> {
     const key = site.settings.mailbox.key;
     if (!key) {
       return Promise.resolve(source('notConfigured'));
     }
     if (!site.stored) {
-      // The settings list could not be read (logged by SettingsService).
+      // Settings list unreadable (logged by SettingsService).
       return Promise.resolve(source('error'));
     }
     const nonEmpty = textOf(site.stored[key]).filter((value: string) => !!value.trim());
     return Promise.resolve(this.evaluate(nonEmpty.length > 0 ? nonEmpty : 'missing', 'mailbox'));
   }
 
-  /** Turns raw values into a status: no values -> empty, values without a valid address -> invalid. */
   private evaluate(raw: RawResult, origin: string): IRecipientSource {
     if (typeof raw === 'string') {
       logVerbose('Recipient source: ' + raw, { origin });
@@ -142,7 +128,7 @@ export class RecipientService {
     return { status: emails.length > 0 ? 'ok' : (nonEmpty.length > 0 ? 'invalid' : 'empty'), emails };
   }
 
-  /** $filter on the field collection: a missing field is an empty result, not an error status. */
+  /** $filter: a missing field is an empty result, not an error status. */
   private readFieldSchema(list: string, internalName: string): Promise<IFieldSchema | undefined> {
     const filter = encodeURIComponent(`InternalName eq '${internalName}'`);
     return this.getJson(`${list}/fields?$select=InternalName,TypeAsString,LookupList&$filter=${filter}`)
@@ -170,7 +156,7 @@ function source(status: RecipientStatus): IRecipientSource {
   return { status, emails: [] };
 }
 
-/** REST URL of a list by its ID. Throws for an invalid ID (it is inserted into the URL). */
+/** Throws for an invalid ID (it is inserted into the URL). */
 export function listUrl(api: string, listId: string): string {
   const match = GUID.exec(listId);
   if (!match) {
@@ -179,13 +165,13 @@ export function listUrl(api: string, listId: string): string {
   return `${api}/web/lists(guid'${match[1]}')`;
 }
 
-/** REST URL of a list by its URL relative to the web ("Lists/<name>"), SharePoint 2016 and later. */
+/** getlist() needs SharePoint 2016 or later. */
 export function settingsListUrl(api: string, webServerRelativeUrl: string, relativeListUrl: string): string {
   const serverRelative = webServerRelativeUrl.replace(/\/+$/, '') + '/' + relativeListUrl;
   return `${api}/web/getlist('${encodeURIComponent(serverRelative.replace(/'/g, "''"))}')`;
 }
 
-/** Text value; may contain several addresses separated by ";" (split by validEmails). */
+/** May contain several addresses separated by ";" (split by validEmails). */
 function textOf(value: unknown): string[] {
   return typeof value === 'string' ? [value] : [];
 }

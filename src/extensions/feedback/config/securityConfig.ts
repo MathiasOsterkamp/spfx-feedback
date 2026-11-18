@@ -1,33 +1,24 @@
 /**
- * CENTRAL SECURITY CONFIGURATION
- *
- * These values are deliberately NOT part of the extension properties or the settings list: site owners must not be able
- * to relax the rules. Changes are made here in code and rolled out with the package.
+ * Security settings. Deliberately code-only (not in extension properties or the settings list):
+ * site owners must not be able to relax them.
  */
-export const SECURITY_SETTINGS = {
+const SECURITY_SETTINGS = {
   /**
-   * Allowed domains for the recipient addresses (incl. subdomains), e.g. ['firma.de'].
-   * Empty = all domains allowed.
-   *
-   * The recipient fields are editable by every visitor. Without a restriction the form can be used
-   * to send mails with SharePoint as sender to any address. Recommended for production.
+   * Allowed recipient domains (incl. subdomains), e.g. ['firma.de']. Empty = all domains.
+   * Recommended for production: visitors can edit the recipients, so without it the form can send
+   * mails with SharePoint as sender to any address.
    */
   allowedRecipientDomains: [] as string[],
-  /** RFC 5321: an address has at most 254 characters. */
+  /** RFC 5321 */
   maxEmailLength: 254,
-  /** Addresses per field (contact, mailbox); the field is also limited to maxTextLength characters. */
+  /** Addresses per field (contact, mailbox). */
   maxRecipientsPerField: 10,
-  /**
-   * Single-line text fields: subject, URL (only http(s) addresses), contact person and shared mailbox in the form;
-   * single-line fields and the mail subject in the settings view. 255 = limit of a single line of text in SharePoint.
-   */
+  /** Single-line fields in form and settings view; 255 = SharePoint single line of text. */
   maxTextLength: 255,
-  /** Description (multi-line) in the form. */
   maxDescriptionLength: 5000,
-  /** Limits for the categories (language files and settings list). */
   maxCategories: 30,
   maxCategoryLength: 100,
-  /** Mail body template stored in the settings list (plain text). */
+  /** Mail body template in the settings list. */
   maxMailTemplateLength: 20000
 };
 
