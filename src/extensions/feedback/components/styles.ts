@@ -58,23 +58,59 @@ export function useClassNames(): IFeedbackClassNames {
   return getClassNames(useTheme());
 }
 
-/** Class names of the setup view (SetupView). */
-export interface ISetupClassNames {
+/** Class names of the settings view (SettingsView). */
+export interface ISettingsClassNames {
+  tabs: string;
+  panel: string;
+  notice: string;
+  description: string;
+  warning: string;
+  links: string;
   row: string;
   label: string;
   value: string;
-  ok: string;
   problem: string;
-  action: string;
-  hint: string;
+  ok: string;
+  language: string;
+  intro: string;
+  checklist: string;
+  checkItem: string;
+  checkIcon: string;
+  iconOk: string;
+  iconWarning: string;
+  iconError: string;
+  checkLabel: string;
+  checkDetail: string;
+  checkProblem: string;
+  actions: string;
   visibility: string;
   loading: string;
 }
 
-const getSetupClassNames = memoizeFunction((theme: ITheme): ISetupClassNames => {
+const getSettingsClassNames = memoizeFunction((theme: ITheme): ISettingsClassNames => {
   const text = { ...theme.fonts.medium, margin: 0, overflowWrap: 'break-word' as const, wordBreak: 'break-word' as const };
+  const small = { ...theme.fonts.small, margin: '5px 0 0', overflowWrap: 'break-word' as const, wordBreak: 'break-word' as const };
   return mergeStyleSets({
-    // Read-only "label / value" rows, aligned like the labels of the text fields.
+    tabs: {
+      marginBottom: 4
+    },
+    // Same height for all tabs: the dialog does not jump when switching.
+    panel: {
+      minHeight: 340
+    },
+    notice: {
+      marginTop: 12
+    },
+    // Text below a dropdown, like the description of a text field (Dropdown has no description prop).
+    description: { ...small, color: theme.semanticColors.bodySubtext },
+    warning: { ...small, color: theme.semanticColors.warningText || theme.semanticColors.bodyText },
+    // Small links below a field ("insert default", "use default").
+    links: {
+      ...theme.fonts.small,
+      margin: '6px 0 0',
+      selectors: { '& > *': { marginRight: 16 } }
+    },
+    // Read-only "label / value" row, aligned like the labels of the text fields.
     row: {
       marginTop: 12
     },
@@ -85,15 +121,40 @@ const getSetupClassNames = memoizeFunction((theme: ITheme): ISetupClassNames => 
       padding: '5px 0'
     },
     value: { ...text, color: theme.semanticColors.bodyText },
-    ok: { ...text, color: theme.semanticColors.successIcon },
-    problem: { ...text, color: theme.semanticColors.errorText },
-    action: {
-      marginTop: 16
+    problem: { ...text, color: theme.semanticColors.errorText, marginTop: 12 },
+    ok: { ...text, color: theme.semanticColors.successIcon, marginTop: 12 },
+    language: {
+      marginTop: 12,
+      maxWidth: 320
     },
-    hint: {
-      ...theme.fonts.small,
-      color: theme.semanticColors.bodySubtext,
-      margin: '0 0 8px'
+    intro: { ...text, color: theme.semanticColors.bodyText, marginTop: 12 },
+    // Checklist of the setup: icon, name of the part, status below.
+    checklist: {
+      listStyle: 'none',
+      margin: '12px 0 0',
+      padding: 0
+    },
+    checkItem: {
+      display: 'flex',
+      alignItems: 'flex-start',
+      padding: '10px 0',
+      borderBottom: `1px solid ${theme.semanticColors.bodyDivider}`
+    },
+    checkIcon: {
+      flexShrink: 0,
+      fontSize: 16,
+      lineHeight: 20,
+      marginRight: 12
+    },
+    iconOk: { color: theme.semanticColors.successIcon },
+    iconWarning: { color: theme.semanticColors.warningIcon },
+    iconError: { color: theme.semanticColors.errorIcon },
+    checkLabel: { ...text, color: theme.semanticColors.bodyText },
+    checkDetail: { ...small, margin: '2px 0 0', color: theme.semanticColors.bodySubtext },
+    checkProblem: { ...small, margin: '2px 0 0', color: theme.semanticColors.errorText },
+    actions: {
+      marginTop: 16,
+      selectors: { '& > *': { marginRight: 8, marginBottom: 8 } }
     },
     visibility: {
       ...theme.fonts.small,
@@ -101,13 +162,122 @@ const getSetupClassNames = memoizeFunction((theme: ITheme): ISetupClassNames => 
       margin: '24px 0 0'
     },
     loading: {
-      minHeight: 160
+      minHeight: 340
     }
   });
 });
 
-export function useSetupClassNames(): ISetupClassNames {
-  return getSetupClassNames(useTheme());
+export function useSettingsClassNames(): ISettingsClassNames {
+  return getSettingsClassNames(useTheme());
+}
+
+/** Class names of the mail preview (MailPreview). */
+export interface IPreviewClassNames {
+  title: string;
+  hint: string;
+  mail: string;
+  header: string;
+  label: string;
+  value: string;
+  subject: string;
+  address: string;
+  none: string;
+  body: string;
+}
+
+const getPreviewClassNames = memoizeFunction((theme: ITheme): IPreviewClassNames => {
+  const wrap = { overflowWrap: 'break-word' as const, wordBreak: 'break-word' as const };
+  const cell = { padding: '6px 0', verticalAlign: 'top', borderBottom: `1px solid ${theme.semanticColors.bodyDivider}` };
+  return mergeStyleSets({
+    title: {
+      ...theme.fonts.mediumPlus,
+      fontWeight: FontWeights.semibold,
+      color: theme.semanticColors.bodyText,
+      margin: '8px 0 4px'
+    },
+    hint: {
+      ...theme.fonts.medium,
+      color: theme.semanticColors.bodySubtext,
+      margin: '0 0 12px'
+    },
+    mail: {
+      border: `1px solid ${theme.semanticColors.bodyDivider}`,
+      borderRadius: theme.effects.roundedCorner4,
+      overflow: 'hidden',
+      boxShadow: theme.effects.elevation4
+    },
+    // Header like in a mail program: a table (label | value), also works in IE11.
+    header: {
+      width: '100%',
+      borderCollapse: 'collapse',
+      tableLayout: 'auto',
+      backgroundColor: theme.semanticColors.bodyStandoutBackground,
+      selectors: { 'tr:last-child th, tr:last-child td': { borderBottom: 0 } }
+    },
+    label: {
+      ...theme.fonts.medium,
+      ...cell,
+      width: '1%',
+      whiteSpace: 'nowrap',
+      textAlign: 'left',
+      fontWeight: FontWeights.semibold,
+      color: theme.semanticColors.bodySubtext,
+      padding: '8px 24px 6px 16px'
+    },
+    value: {
+      ...theme.fonts.medium,
+      ...wrap,
+      ...cell,
+      color: theme.semanticColors.bodyText,
+      padding: '4px 16px 4px 0'
+    },
+    subject: {
+      ...theme.fonts.large,
+      ...wrap,
+      ...cell,
+      fontWeight: FontWeights.semibold,
+      color: theme.semanticColors.bodyText,
+      padding: '6px 16px 6px 0'
+    },
+    // One chip per address: several recipients stay readable.
+    address: {
+      display: 'inline-block',
+      maxWidth: '100%',
+      boxSizing: 'border-box',
+      ...wrap,
+      margin: '2px 6px 2px 0',
+      padding: '1px 10px',
+      borderRadius: 12,
+      backgroundColor: theme.palette.themeLighterAlt,
+      border: `1px solid ${theme.palette.themeLighter}`,
+      color: theme.palette.themeDarker,
+      selectors: { [HighContrastSelector]: { border: '1px solid WindowText', color: 'WindowText' } }
+    },
+    none: {
+      display: 'inline-block',
+      padding: '3px 0',
+      fontStyle: 'italic',
+      color: theme.semanticColors.bodySubtext
+    },
+    // The body has fixed colors (mail programs ignore the SharePoint theme): white like a mail, scrolls if long.
+    body: {
+      ...wrap,
+      padding: 16,
+      maxHeight: '50vh',
+      overflowY: 'auto',
+      backgroundColor: '#ffffff',
+      borderTop: `1px solid ${theme.semanticColors.bodyDivider}`,
+      selectors: {
+        a: { color: '#0078d4' },
+        [HighContrastSelector]: { backgroundColor: 'Window', color: 'WindowText' }
+      }
+    }
+  });
+});
+
+
+export function usePreviewClassNames(): IPreviewClassNames {
+  return getPreviewClassNames(useTheme());
 }
 
 /** Round, floating button at the bottom right of the page. */

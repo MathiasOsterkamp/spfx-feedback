@@ -3,7 +3,7 @@ import { NOMETADATA, settingsListUrl } from './RecipientService';
 import { ISecurityPolicy } from '../config/securityConfig';
 import { IFeedbackSettings, ISiteSettings, IStoredValues } from '../models/IFeedback';
 import { logVerbose, logWarning } from '../utils/logging';
-import { applyStoredValues } from '../utils/sanitize';
+import { applyStoredValues, settingEntryKeys } from '../utils/sanitize';
 import { IUntyped, odataItems } from '../utils/untyped';
 
 /** More entries than the settings list ever needs; protects against a list that was filled by mistake. */
@@ -15,7 +15,7 @@ const MAX_ENTRIES = 500;
  *
  * One request when the dialog opens, cached for the page view. Never fails: if the list cannot be read,
  * the code configuration applies and stored is undefined. A missing list or value column means
- * "nothing stored" - the setup view creates both when it saves.
+ * "nothing stored" - "Set up" in the settings view creates both.
  */
 export class SettingsService {
   private readonly api: string;
@@ -43,21 +43,21 @@ export class SettingsService {
     return this.cache;
   }
 
-  /** Forgets the cached values, e.g. after the setup view saved. */
+  /** Forgets the cached values, e.g. after the settings view saved. */
   public reset(): void {
     this.cache = undefined;
   }
 
   /** Only the known keys are kept; for duplicate titles the first entry (lowest ID) counts. */
   private readStored(): Promise<IStoredValues | undefined> {
-    const { url, valueColumn, keys } = this.base.settingsList;
+    const { url, valueColumn } = this.base.settingsList;
     if (!url) {
       // Invalid configuration, already logged.
       return Promise.resolve({});
     }
     const column = valueColumn.internalName;
-    const known = [keys.contactList, keys.contactColumn, keys.categories, keys.mailSubject, keys.mailBody, this.base.mailbox.key]
-      .filter((key: string) => !!key);
+    // All languages: the settings view shows the entries of every language.
+    const known = settingEntryKeys(this.base);
     const request = `${settingsListUrl(this.api, this.webServerRelativeUrl, url)}/items?$select=Title,${column}&$orderby=Id&$top=${MAX_ENTRIES}`;
     logVerbose('GET ' + request);
     return this.httpClient.get(request, SPHttpClient.configurations.v1, NOMETADATA)

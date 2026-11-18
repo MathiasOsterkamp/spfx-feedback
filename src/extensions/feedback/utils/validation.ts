@@ -42,22 +42,30 @@ export function checkEmailList(value: string, policy: ISecurityPolicy): string {
   return '';
 }
 
+/**
+ * An address field as typed (several addresses separated by ";" or ","): at most maxTextLength characters,
+ * then every address. The pre-filled value from SharePoint can be longer than the field allows to type.
+ */
+export function checkAddressField(value: string, policy: ISecurityPolicy): string {
+  return value.trim().length > policy.maxTextLength
+    ? formatText(strings.errorTooLong, policy.maxTextLength)
+    : checkEmailList(value, policy);
+}
+
 /** Only absolute http(s) addresses with a host. */
 export function checkUrl(url: string, policy: ISecurityPolicy): string {
-  if (url.length > policy.maxUrlLength) {
-    return formatText(strings.errorTooLong, policy.maxUrlLength);
+  if (url.length > policy.maxTextLength) {
+    return formatText(strings.errorTooLong, policy.maxTextLength);
   }
   return /^https?:\/\/[^\s/?#]+[^\s]*$/i.test(url) ? '' : strings.errorUrl;
 }
 
-/** Validates the whole form. Required: category, subject, URL, description and at least one recipient. */
+/** Validates the whole form. Required: category, subject, URL, description and the contact person; the shared mailbox is optional. */
 export function validateForm(form: IFeedbackForm, categories: string[], policy: ISecurityPolicy): FeedbackErrors {
   const errors: FeedbackErrors = {};
   const subject = form.subject.trim();
   const url = form.url.trim();
   const description = form.description.trim();
-  const contact = splitEmails(form.contactEmail).join(';');
-  const mailbox = splitEmails(form.mailboxEmail).join(';');
 
   if (categories.indexOf(form.category) < 0) {
     errors.category = strings.errorCategory;
@@ -65,8 +73,8 @@ export function validateForm(form: IFeedbackForm, categories: string[], policy: 
 
   if (!subject) {
     errors.subject = strings.errorRequired;
-  } else if (subject.length > policy.maxSubjectLength) {
-    errors.subject = formatText(strings.errorTooLong, policy.maxSubjectLength);
+  } else if (subject.length > policy.maxTextLength) {
+    errors.subject = formatText(strings.errorTooLong, policy.maxTextLength);
   }
 
   errors.url = url ? checkUrl(url, policy) : strings.errorRequired;
@@ -77,13 +85,11 @@ export function validateForm(form: IFeedbackForm, categories: string[], policy: 
     errors.description = formatText(strings.errorTooLong, policy.maxDescriptionLength);
   }
 
-  if (!contact && !mailbox) {
-    errors.contactEmail = strings.errorRecipient;
-    errors.mailboxEmail = strings.errorRecipient;
-  } else {
-    errors.contactEmail = checkEmailList(contact, policy);
-    errors.mailboxEmail = checkEmailList(mailbox, policy);
-  }
+  // Contact person: required (recipient of the mail, To). Shared mailbox: optional (copy, Cc).
+  errors.contactEmail = splitEmails(form.contactEmail).length === 0
+    ? strings.errorRecipient
+    : checkAddressField(form.contactEmail, policy);
+  errors.mailboxEmail = checkAddressField(form.mailboxEmail, policy);
 
   // Remove empty entries: a field without a key is valid.
   FIELD_ORDER.forEach((field: FeedbackField) => {

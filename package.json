@@ -9,7 +9,7 @@
   "scripts": {
     "build": "gulp bundle",
     "clean": "gulp clean",
-    "serve": "gulp serve",
+    "serve": "gulp serve --locale=de-de",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",

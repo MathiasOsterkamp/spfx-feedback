@@ -13,27 +13,29 @@ export const SECURITY_SETTINGS = {
    * to send mails with SharePoint as sender to any address. Recommended for production.
    */
   allowedRecipientDomains: [] as string[],
-  /** Only http(s) addresses are accepted in the URL field. */
-  maxUrlLength: 2048,
   /** RFC 5321: an address has at most 254 characters. */
   maxEmailLength: 254,
-  /** Addresses per field (contact, mailbox). Person and lookup fields can hold several values. */
+  /** Addresses per field (contact, mailbox); the field is also limited to maxTextLength characters. */
   maxRecipientsPerField: 10,
-  maxSubjectLength: 255,
-  maxDescriptionLength: 4000,
+  /**
+   * Single-line text fields: subject, URL (only http(s) addresses), contact person and shared mailbox in the form;
+   * single-line fields and the mail subject in the settings view. 255 = limit of a single line of text in SharePoint.
+   */
+  maxTextLength: 255,
+  /** Description (multi-line) in the form. */
+  maxDescriptionLength: 5000,
   /** Limits for the categories (language files and settings list). */
   maxCategories: 30,
   maxCategoryLength: 100,
-  /** Mail body template stored in the settings list (HTML). */
+  /** Mail body template stored in the settings list (plain text). */
   maxMailTemplateLength: 20000
 };
 
 export interface ISecurityPolicy {
   allowedRecipientDomains: string[];
-  maxUrlLength: number;
   maxEmailLength: number;
   maxRecipientsPerField: number;
-  maxSubjectLength: number;
+  maxTextLength: number;
   maxDescriptionLength: number;
   maxCategories: number;
   maxCategoryLength: number;
@@ -45,10 +47,9 @@ export function createSecurityPolicy(): ISecurityPolicy {
     allowedRecipientDomains: SECURITY_SETTINGS.allowedRecipientDomains
       .map((d: string) => d.trim().toLowerCase().replace(/^@/, ''))
       .filter((d: string) => !!d),
-    maxUrlLength: SECURITY_SETTINGS.maxUrlLength,
     maxEmailLength: SECURITY_SETTINGS.maxEmailLength,
     maxRecipientsPerField: SECURITY_SETTINGS.maxRecipientsPerField,
-    maxSubjectLength: SECURITY_SETTINGS.maxSubjectLength,
+    maxTextLength: SECURITY_SETTINGS.maxTextLength,
     maxDescriptionLength: SECURITY_SETTINGS.maxDescriptionLength,
     maxCategories: SECURITY_SETTINGS.maxCategories,
     maxCategoryLength: SECURITY_SETTINGS.maxCategoryLength,

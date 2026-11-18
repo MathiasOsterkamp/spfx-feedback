@@ -23,9 +23,9 @@ export interface IFeedbackProps {
   mailService: MailService;
   recipientService: RecipientService;
   setupService: SetupService;
-  /** Current user may open the setup (gear icon): at least "Design" permission on the site. */
+  /** Current user may open the settings (gear icon): at least "Design" permission on the site. */
   canConfigure: boolean;
-  /** Current user may store entries in the settings list (create it if missing). */
+  /** Current user may store entries in the settings list (once it is set up). */
   canSaveSettings: boolean;
   /** Current user may store the shared mailbox (settings list: design permission, property bag: site owners). */
   canSaveMailbox: boolean;

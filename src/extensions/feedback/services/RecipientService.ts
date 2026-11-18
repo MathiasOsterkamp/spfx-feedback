@@ -66,6 +66,11 @@ export class RecipientService {
     if (!this.contactCache[key]) {
       this.contactCache[key] = this.readContact(page, settings)
         .catch((error: unknown) => {
+          // 404: the list the lookup column points to was deleted - a setup problem, fixed in the settings view.
+          if ((error as { status?: number }).status === 404) {
+            logWarning('The list of the contact lookup column does not exist, run the setup (gear icon)', { column });
+            return source('missing');
+          }
           logWarning('Contact person could not be read', { column, error: String(error) });
           // Do not keep the failure: the next opening tries again.
           delete this.contactCache[key];
@@ -211,6 +216,6 @@ function textOf(value: unknown): string[] {
  * REST returns property bag keys as OData property names: every character other than a letter or digit
  * is encoded as _xHHHH_ ("My_Key" -> "My_x005f_Key", "My Key" -> "My_x0020_Key").
  */
-function encodePropertyName(key: string): string {
+export function encodePropertyName(key: string): string {
   return key.replace(/[^A-Za-z0-9]/g, (c: string) => '_x' + ('000' + c.charCodeAt(0).toString(16)).slice(-4) + '_');
 }

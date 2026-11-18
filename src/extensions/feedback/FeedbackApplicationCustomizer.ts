@@ -16,12 +16,11 @@ import { configureLogging, logInfo, logVerbose, logWarning, LogLevelName, saniti
 import { createSettings } from './utils/sanitize';
 import { createSharePointTheme } from './utils/theme';
 import { asRecord } from './utils/untyped';
-import * as strings from 'FeedbackApplicationCustomizerStrings';
 
 /**
  * Properties of the extension (ClientSideComponentProperties of the custom action, see
  * sharepoint/assets/elements.xml). Everything else is configured in code (config/feedbackConfig.ts)
- * and per site in the settings list (setup view of the dialog).
+ * and per site in the settings list (settings view of the dialog, gear icon).
  */
 export interface IFeedbackApplicationCustomizerProperties {
   /** From which level on the log is written to the browser console */
@@ -59,7 +58,7 @@ export default class FeedbackApplicationCustomizer extends BaseApplicationCustom
 
     const policy = createSecurityPolicy();
     // Code configuration; the settings list of the site is read when the dialog opens (SettingsService).
-    const settings = createSettings(FEEDBACK_CONFIG, this.context.pageContext.cultureInfo.currentUICultureName, strings.categories, policy);
+    const settings = createSettings(FEEDBACK_CONFIG, this.context.pageContext.cultureInfo.currentUICultureName, policy);
     const web = this.context.pageContext.web;
     const user = this.context.pageContext.user;
     logVerbose('Settings (code)', settings);

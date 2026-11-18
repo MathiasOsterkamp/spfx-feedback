@@ -1,11 +1,11 @@
 import { unknownPlaceholders } from './mail';
-import { FIELD_NAME, LIST_NAME, singleLine, splitLines } from './sanitize';
+import { containsHtml, FIELD_NAME, LIST_NAME, singleLine, splitLines } from './sanitize';
 import { ISecurityPolicy } from '../config/securityConfig';
 import { formatText } from '../loc/template';
 import * as strings from 'FeedbackApplicationCustomizerStrings';
 
 /*
- * Checks of the setup view (settings list). An empty value is always valid: the default of the code applies.
+ * Checks of the settings view (settings list). An empty value is always valid: the default of the code applies.
  * Each function returns an error message or ''.
  */
 
@@ -27,11 +27,14 @@ export function checkCategories(value: string, policy: ISecurityPolicy): string 
     : '';
 }
 
-/** Length and placeholders of a mail template (subject or body). */
+/** Length, HTML and placeholders of a mail template (subject or body; both plain text). */
 export function checkMailTemplate(value: string, maxLength: number): string {
   const text = value.trim();
   if (text.length > maxLength) {
     return formatText(strings.errorTooLong, maxLength);
+  }
+  if (containsHtml(text)) {
+    return strings.setupErrorHtml;
   }
   const unknown = unknownPlaceholders(text);
   return unknown.length > 0 ? formatText(strings.setupErrorPlaceholder, unknown.join(', ')) : '';

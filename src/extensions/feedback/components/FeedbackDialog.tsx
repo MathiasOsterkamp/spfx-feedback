@@ -2,11 +2,11 @@ import * as React from 'react';
 import { DefaultButton, IButton, IButtonProps, PrimaryButton } from '@fluentui/react/lib/Button';
 import { Dialog, DialogFooter, DialogType, IDialogStyles } from '@fluentui/react/lib/Dialog';
 import { Dropdown, IDropdownOption } from '@fluentui/react/lib/Dropdown';
-import { Link } from '@fluentui/react/lib/Link';
 import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
 import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
 import { TextField } from '@fluentui/react/lib/TextField';
-import { isSetupIncomplete, SetupView } from './SetupView';
+import { MailPreview } from './MailPreview';
+import { SettingsView } from './SettingsView';
 import { useClassNames } from './styles';
 import { ISecurityPolicy } from '../config/securityConfig';
 import {
@@ -22,7 +22,7 @@ import { MailService } from '../services/MailService';
 import { RecipientService } from '../services/RecipientService';
 import { SettingsService } from '../services/SettingsService';
 import { SetupService } from '../services/SetupService';
-import { buildMail } from '../utils/mail';
+import { buildMail, IMail } from '../utils/mail';
 import { FIELD_ORDER, hasErrors, validateForm } from '../utils/validation';
 import * as strings from 'FeedbackApplicationCustomizerStrings';
 
@@ -33,9 +33,9 @@ export interface IFeedbackDialogProps {
   mailService: MailService;
   recipientService: RecipientService;
   setupService: SetupService;
-  /** Current user may open the setup (gear icon): at least "Design" permission on the site. */
+  /** Current user may open the settings (gear icon): at least "Design" permission on the site. */
   canConfigure: boolean;
-  /** Current user may store entries in the settings list (create it if missing). */
+  /** Current user may store entries in the settings list (once it is set up). */
   canSaveSettings: boolean;
   /** Current user may store the shared mailbox (settings list: design permission, property bag: site owners). */
   canSaveMailbox: boolean;
@@ -102,7 +102,7 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
   const [form, setForm] = React.useState<IFeedbackForm>(() => ({
     category: '',
     subject: '',
-    url: pageUrl.substr(0, policy.maxUrlLength),
+    url: pageUrl.substr(0, policy.maxTextLength),
     description: '',
     contactEmail: '',
     mailboxEmail: ''
@@ -114,18 +114,26 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
   const [site, setSite] = React.useState<ISiteSettings | undefined>(undefined);
   /** undefined while the default recipients are loading. */
   const [defaults, setDefaults] = React.useState<IRecipientDefaults | undefined>(undefined);
-  /** Incremented after a setup action: reads the recipients again. */
+  /** Incremented after a change in the settings view: reads settings and recipients again. */
   const [reloadCount, setReloadCount] = React.useState(0);
-  /** Form or setup view (gear icon). The form keeps its input while the setup is shown. */
-  const [view, setView] = React.useState<'form' | 'setup'>('form');
+  /**
+   * Form, preview of the mail (before sending) or settings view (gear icon).
+   * The form keeps its input while the preview or the settings are shown.
+   */
+  const [view, setView] = React.useState<'form' | 'preview' | 'settings'>('form');
+  /** The mail shown in the preview; exactly this mail is sent. */
+  const [preview, setPreview] = React.useState<IMail | undefined>(undefined);
 
   const fieldRefs = React.useRef<{ [K in FeedbackField]?: IFocusable | null }>({});
   const closeButton = React.useRef<IButton>(null);
+  const sendButton = React.useRef<IButton>(null);
   const mounted = React.useRef(true);
   React.useEffect(() => () => { mounted.current = false; }, []);
+  /** Addresses last pre-filled: after a change in the settings an unchanged field takes the new value. */
+  const prefilled = React.useRef({ contactEmail: '', mailboxEmail: '' });
 
   // Load the settings of the site, then the contact person of the page and the shared mailbox of the web.
-  // A field the user has already typed into while loading is not overwritten.
+  // A field the user has typed into is not overwritten.
   React.useEffect(() => {
     settingsService.load()
       .then((loadedSite: ISiteSettings) => {
@@ -140,15 +148,18 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
           return;
         }
         setDefaults(loaded);
+        const next = { contactEmail: loaded.contact.emails.join(EMAIL_SEPARATOR), mailboxEmail: loaded.mailbox.emails.join(EMAIL_SEPARATOR) };
+        const previous = prefilled.current;
+        prefilled.current = next;
         setForm((current: IFeedbackForm) => ({
           ...current,
-          contactEmail: current.contactEmail || loaded.contact.emails.join(EMAIL_SEPARATOR),
-          mailboxEmail: current.mailboxEmail || loaded.mailbox.emails.join(EMAIL_SEPARATOR)
+          contactEmail: !current.contactEmail || current.contactEmail === previous.contactEmail ? next.contactEmail : current.contactEmail,
+          mailboxEmail: !current.mailboxEmail || current.mailboxEmail === previous.mailboxEmail ? next.mailboxEmail : current.mailboxEmail
         }));
       });
   }, [settingsService, recipientService, page, reloadCount]);
 
-  const onSetupChanged = (): void => {
+  const onSettingsChanged = (): void => {
     settingsService.reset();
     recipientService.reset();
     setReloadCount((count: number) => count + 1);
@@ -157,8 +168,6 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
   /** Until the settings list is read, the code configuration applies (categories are not selectable yet). */
   const settings = site ? site.settings : settingsService.base;
   const loading = !defaults;
-  /** Several addresses per field ("a@x.de; b@y.de"), therefore type text instead of email. */
-  const maxAddressLength = policy.maxRecipientsPerField * (policy.maxEmailLength + EMAIL_SEPARATOR.length);
   /** Hint below an address field: loading, or nothing stored in SharePoint. */
   const hintFor = (found: boolean, missingText: string): string | undefined =>
     loading ? strings.loadingRecipients : (found ? undefined : missingText);
@@ -173,6 +182,13 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
       closeButton.current.focus();
     }
   }, [done]);
+
+  // The preview replaces the form: the focus goes to "Senden".
+  React.useEffect(() => {
+    if (view === 'preview' && sendButton.current) {
+      sendButton.current.focus();
+    }
+  }, [view]);
 
   const setField = (field: FeedbackField) => (_event: unknown, value?: string): void => {
     setForm((current: IFeedbackForm) => ({ ...current, [field]: value || '' }));
@@ -189,7 +205,8 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
     fieldRefs.current[field] = component;
   };
 
-  const submit = (): void => {
+  /** Checks the form and shows the mail as it will be sent. */
+  const showPreview = (): void => {
     if (busy || done || !site) {
       return;
     }
@@ -203,8 +220,18 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
       }
       return;
     }
+    setPreview(buildMail(form, origin, settings.mail, new Date()));
+    setStatus('editing');
+    setView('preview');
+  };
+
+  /** Sends the mail of the preview. */
+  const send = (): void => {
+    if (busy || done || !preview) {
+      return;
+    }
     setStatus('sending');
-    mailService.send(buildMail(form, origin, settings.mail, new Date())).then(
+    mailService.send(preview).then(
       () => { if (mounted.current) { setStatus('sent'); } },
       () => { if (mounted.current) { setStatus('failed'); } }
     );
@@ -212,19 +239,20 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
 
   const onFormSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
-    submit();
+    showPreview();
   };
 
   const options: IDropdownOption[] = settings.categories.map((category: string) => ({ key: category, text: category }));
 
-  const showSetup = canConfigure && view === 'setup';
-  // Gear icon next to the close button, only for users who may configure.
-  const topButtons: IButtonProps[] = canConfigure && !busy && !done ? [{
+  const showSettings = canConfigure && view === 'settings';
+  const showPreviewView = view === 'preview' && !!preview;
+  // Gear icon next to the close button, only for users who may configure. The settings view has its own
+  // "Back" button (it asks before discarding unsaved changes), so the gear is shown in the form only.
+  const topButtons: IButtonProps[] = canConfigure && view === 'form' && !busy && !done ? [{
     iconProps: { iconName: 'Settings' },
-    title: showSetup ? strings.setupBack : strings.setupOpen,
-    ariaLabel: showSetup ? strings.setupBack : strings.setupOpen,
-    checked: showSetup,
-    onClick: () => setView(showSetup ? 'form' : 'setup')
+    title: strings.settingsOpen,
+    ariaLabel: strings.settingsOpen,
+    onClick: () => setView('settings')
   }] : [];
 
   return (
@@ -233,7 +261,7 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
       onDismiss={busy ? undefined : onDismiss}
       dialogContentProps={{
         type: DialogType.normal,
-        title: showSetup ? strings.setupTitle : strings.dialogTitle,
+        title: showSettings ? strings.settingsTitle : strings.dialogTitle,
         showCloseButton: !busy,
         closeButtonAriaLabel: strings.close,
         topButtonsProps: topButtons
@@ -251,11 +279,25 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
             <DefaultButton componentRef={closeButton} text={strings.close} onClick={onDismiss} />
           </DialogFooter>
         </>
-      ) : showSetup ? (
-        // Not inside the feedback form: Enter in a setup field must not send the report.
-        <SetupView
-          defaults={defaults}
+      ) : showPreviewView && preview ? (
+        <>
+          {status === 'failed' && (
+            <MessageBar messageBarType={MessageBarType.error} className={classNames.message}>{strings.sendFailed}</MessageBar>
+          )}
+          <MailPreview mail={preview} />
+          <DialogFooter>
+            <PrimaryButton componentRef={sendButton} onClick={send} disabled={busy} text={busy ? strings.sending : strings.previewSend}>
+              {busy && <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginLeft: 8 } }} />}
+            </PrimaryButton>
+            <DefaultButton text={strings.previewBack} onClick={() => { setStatus('editing'); setView('form'); }} disabled={busy} />
+            <DefaultButton text={strings.cancel} onClick={onDismiss} disabled={busy} />
+          </DialogFooter>
+        </>
+      ) : showSettings ? (
+        // Not inside the feedback form: Enter in a settings field must not send the report.
+        <SettingsView
           site={site}
+          defaults={defaults}
           base={settingsService.base}
           page={page}
           canSaveSettings={canSaveSettings}
@@ -263,26 +305,14 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
           policy={policy}
           setupService={setupService}
           webUrl={origin.webUrl}
-          onChanged={onSetupChanged}
+          onChanged={onSettingsChanged}
           onBack={() => setView('form')}
         />
       ) : (
         <>
-          {canConfigure && isSetupIncomplete(defaults) && (
-            <MessageBar
-              messageBarType={MessageBarType.warning}
-              className={classNames.message}
-            >
-              {strings.setupIncomplete}{' '}
-              <Link onClick={() => setView('setup')}>{strings.setupOpen}</Link>
-            </MessageBar>
-          )}
           {/* noValidate: the browser's own validation bubbles would compete with the Fluent messages.
-              The footer is part of the form: Enter in a single-line field sends (also in IE11). */}
+              The footer is part of the form: Enter in a single-line field sends, i.e. shows the preview first (also in IE11). */}
           <form noValidate onSubmit={onFormSubmit}>
-          {status === 'failed' && (
-            <MessageBar messageBarType={MessageBarType.error} className={classNames.message}>{strings.sendFailed}</MessageBar>
-          )}
           {showErrors && hasErrors(errors) && (
             <MessageBar messageBarType={MessageBarType.warning} className={classNames.message}>{strings.errorForm}</MessageBar>
           )}
@@ -309,7 +339,7 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
                 value={form.subject}
                 onChange={setField('subject')}
                 errorMessage={errors.subject}
-                maxLength={policy.maxSubjectLength}
+                maxLength={policy.maxTextLength}
                 required
               />
               <TextField
@@ -320,7 +350,7 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
                 value={form.url}
                 onChange={setField('url')}
                 errorMessage={errors.url}
-                maxLength={policy.maxUrlLength}
+                maxLength={policy.maxTextLength}
                 type="url"
                 inputMode="url"
                 required
@@ -351,9 +381,10 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
                 onChange={setField('contactEmail')}
                 errorMessage={errors.contactEmail}
                 description={hintFor(!!defaults && defaults.contact.status === 'ok', strings.contactMissing)}
-                maxLength={maxAddressLength}
+                maxLength={policy.maxTextLength}
                 inputMode="email"
                 autoComplete="off"
+                required
               />
               <TextField
                 componentRef={refFor('mailboxEmail')}
@@ -364,7 +395,7 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
                 onChange={setField('mailboxEmail')}
                 errorMessage={errors.mailboxEmail}
                 description={hintFor(!!defaults && defaults.mailbox.status === 'ok', strings.mailboxMissing)}
-                maxLength={maxAddressLength}
+                maxLength={policy.maxTextLength}
                 inputMode="email"
                 autoComplete="off"
               />
@@ -372,9 +403,7 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
             </fieldset>
           </div>
           <DialogFooter>
-            <PrimaryButton type="submit" disabled={busy} text={busy ? strings.sending : strings.send}>
-              {busy && <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginLeft: 8 } }} />}
-            </PrimaryButton>
+            <PrimaryButton type="submit" text={strings.send} />
             <DefaultButton text={strings.cancel} onClick={onDismiss} disabled={busy} />
           </DialogFooter>
           </form>

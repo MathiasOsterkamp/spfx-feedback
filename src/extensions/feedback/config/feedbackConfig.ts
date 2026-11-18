@@ -5,8 +5,8 @@
  * browser console.
  *
  * Some settings can be overridden per site in the settings list (see settingsList). They are edited in
- * the setup view of the dialog (gear icon): contact list and lookup column, categories, mail subject and
- * mail text. An empty or missing entry there means: the value from this file applies.
+ * the settings view of the dialog (gear icon): contact list and lookup column and - per language - categories,
+ * mail subject and mail text. An empty or missing entry there means: the value from this file applies.
  *
  * Contact person: a lookup column in the "Site Pages" library that points to a list with the
  * columns "Title" (name) and an e-mail column. The form reads the e-mail address of the entry
@@ -40,7 +40,7 @@ export const FEEDBACK_CONFIG = {
 
   /**
    * Settings list of the site: one entry per setting, title = key, value in valueColumn (multiple lines of text).
-   * url always "Lists/<name>". The setup view (gear icon) creates list and column when it saves for the first time.
+   * url always "Lists/<name>". "Set up" in the settings view (gear icon, tab "Setup") creates list and column.
    * Visitors need read access (given with inherited permissions); everyone who may edit the list items can
    * change the settings - restrict the permissions of the list if that is not wanted.
    */
@@ -51,15 +51,19 @@ export const FEEDBACK_CONFIG = {
       internalName: 'Wert',
       displayName: 'Wert'
     },
-    /** Titles of the entries. An empty or missing entry = the default of this file applies. */
+    /**
+     * Titles of the entries. An empty or missing entry = the default of this file applies.
+     * Categories and mail template are stored per language: the title gets the language code,
+     * e.g. "Kategorien (de-de)", "Mail-Text (en-us)".
+     */
     keys: {
       /** Name of the contact list in its URL ("Ansprechpartner" for "Lists/Ansprechpartner"). */
       contactList: 'Ansprechpartner-Liste',
       /** Internal name of the lookup column in Site Pages. */
       contactColumn: 'Ansprechpartner-Spalte',
-      /** One category per line, for all languages. Default: "categories" of the language files. */
+      /** Per language: one category per line. Default: languages[...].categories. */
       categories: 'Kategorien',
-      /** Mail subject (plain text) and body (HTML) for all languages. Default: mail.templates. */
+      /** Per language: mail subject and body (both plain text). Default: languages[...].mailSubject/mailBody. */
       mailSubject: 'Mail-Betreff',
       mailBody: 'Mail-Text'
     }
@@ -78,11 +82,10 @@ export const FEEDBACK_CONFIG = {
     key: 'Funktionspostfach'
   },
 
-  // The default categories are texts of the language files (loc/de-de.js, en-us.js, fr-fr.js: "categories").
-
   /**
    * Notification mail, sent with SharePoint's REST API SP.Utilities.Utility.SendEmail.
-   * Recipients (To) are the contact person(s) and the shared mailbox from the form.
+   * Recipients: the contact person(s) of the form in To, the shared mailbox in Cc (together with cc below).
+   * Without a contact person the shared mailbox is the recipient (To).
    */
   mail: {
     /** Fixed additional recipients, e.g. an archive mailbox. Invalid addresses are ignored. */
@@ -95,67 +98,78 @@ export const FEEDBACK_CONFIG = {
      */
     from: '',
     /** "Reply" in the mail program goes to the person who sent the report (header Reply-To). */
-    replyToReporter: true,
-    /**
-     * Default subject (plain text) and body (HTML) per UI language; the settings list can override them for
-     * all languages. Unknown languages use the entry with the same language prefix (e.g. "de-at" -> "de-de"),
-     * otherwise defaultLanguage.
-     *
-     * Placeholders (values are always HTML-escaped; line breaks of the description become <br>):
-     *   {{category}} {{subject}} {{description}} {{url}}
-     *   {{reporterName}} {{reporterEmail}} {{siteTitle}} {{siteUrl}} {{date}} {{recipients}}
-     *
-     * Mail programs ignore <style> blocks and external CSS in many cases: use inline styles.
-     */
-    templates: {
-      'de-de': {
-        subject: '[Feedback] {{category}}: {{subject}}',
-        body: mailBody('Über den Feedback-Button wurde folgende Meldung gesendet:', {
-          category: 'Kategorie', subject: 'Betreff', url: 'URL', description: 'Beschreibung',
-          reporter: 'Gemeldet von', site: 'Website', date: 'Datum'
-        })
-      },
-      'en-us': {
-        subject: '[Feedback] {{category}}: {{subject}}',
-        body: mailBody('The following report was sent via the feedback button:', {
-          category: 'Category', subject: 'Subject', url: 'URL', description: 'Description',
-          reporter: 'Reported by', site: 'Site', date: 'Date'
-        })
-      },
-      'fr-fr': {
-        subject: '[Feedback] {{category}} : {{subject}}',
-        body: mailBody('Le signalement suivant a été envoyé via le bouton de feedback :', {
-          category: 'Catégorie', subject: 'Objet', url: 'URL', description: 'Description',
-          reporter: 'Signalé par', site: 'Site', date: 'Date'
-        })
-      }
-    } as { [language: string]: { subject: string; body: string } }
+    replyToReporter: true
   },
 
-  /** Language whose mail template applies if the UI language has none. */
+  /**
+   * Languages with their defaults. Each site can override categories and mail template per language
+   * (settings list, settings view: tab "Form and e-mail"). The UI language picks the entry: exact match
+   * ("de-de"), then the same language prefix ("de-at" -> "de-de"), otherwise defaultLanguage.
+   *
+   *  - label:       name of the language in the settings view
+   *  - categories:  selectable categories of the form, in this order
+   *  - mailSubject: plain text
+   *  - mailBody:    plain text without HTML ("\n" = line break; a template with HTML tags is not used).
+   *                 The mail is sent as HTML: the code escapes text and values, turns line breaks into <br>
+   *                 and makes {{url}}, {{siteUrl}} and {{reporterEmail}} clickable links.
+   *
+   * Placeholders in subject and body:
+   *   {{category}} {{subject}} {{description}} {{url}}
+   *   {{reporterName}} {{reporterEmail}} {{siteTitle}} {{siteUrl}} {{date}} {{recipients}}
+   */
+  languages: {
+    'de-de': {
+      label: 'Deutsch',
+      categories: ['Defekter Link', 'Fehlerhafter Inhalt', 'Veralteter Inhalt', 'Barrierefreiheit', 'Technisches Problem', 'Sonstiges'],
+      mailSubject: '[Feedback] {{category}}: {{subject}}',
+      mailBody: mailBody('Über den Feedback-Button wurde folgende Meldung gesendet:', {
+        category: 'Kategorie', subject: 'Betreff', url: 'URL', description: 'Beschreibung',
+        reporter: 'Gemeldet von', site: 'Website', date: 'Datum'
+      })
+    },
+    'en-us': {
+      label: 'English',
+      categories: ['Broken link', 'Incorrect content', 'Outdated content', 'Accessibility', 'Technical problem', 'Other'],
+      mailSubject: '[Feedback] {{category}}: {{subject}}',
+      mailBody: mailBody('The following report was sent via the feedback button:', {
+        category: 'Category', subject: 'Subject', url: 'URL', description: 'Description',
+        reporter: 'Reported by', site: 'Site', date: 'Date'
+      })
+    },
+    'fr-fr': {
+      label: 'Français',
+      categories: ['Lien rompu', 'Contenu erroné', 'Contenu obsolète', 'Accessibilité', 'Problème technique', 'Autre'],
+      mailSubject: '[Feedback] {{category}} : {{subject}}',
+      mailBody: mailBody('Le signalement suivant a été envoyé via le bouton de feedback :', {
+        category: 'Catégorie', subject: 'Objet', url: 'URL', description: 'Description',
+        reporter: 'Signalé par', site: 'Site', date: 'Date'
+      })
+    }
+  } as { [language: string]: { label: string; categories: string[]; mailSubject: string; mailBody: string } },
+
+  /** Language that applies if the UI language matches none of languages. */
   defaultLanguage: 'de-de'
 };
 
 /**
- * Default mail layout: intro and a table with all values. Only a helper for the templates above -
- * a template can just as well be written as a complete HTML string.
+ * Default mail text: intro and one line per value, the description below. Only a helper for the templates
+ * above - a template can just as well be written as a plain string ("\n" = line break).
  */
 function mailBody(intro: string, labels: {
   category: string; subject: string; url: string; description: string; reporter: string; site: string; date: string;
 }): string {
-  const th = 'padding:6px 12px;border:1px solid #c8c6c4;vertical-align:top;text-align:left;background:#f3f2f1;white-space:nowrap;';
-  const td = 'padding:6px 12px;border:1px solid #c8c6c4;vertical-align:top;text-align:left;';
-  const row = (label: string, value: string): string => `<tr><th style="${th}">${label}</th><td style="${td}">${value}</td></tr>`;
-  return '<div style="font-family:\'Segoe UI\',Arial,sans-serif;font-size:14px;color:#323130;">'
-    + `<p>${intro}</p>`
-    + '<table style="border-collapse:collapse;">'
-    + row(labels.category, '{{category}}')
-    + row(labels.subject, '{{subject}}')
-    + row(labels.url, '<a href="{{url}}">{{url}}</a>')
-    + row(labels.description, '{{description}}')
-    + row(labels.reporter, '{{reporterName}} &lt;<a href="mailto:{{reporterEmail}}">{{reporterEmail}}</a>&gt;')
-    + row(labels.site, '<a href="{{siteUrl}}">{{siteTitle}}</a>')
-    + row(labels.date, '{{date}}')
-    + '</table>'
-    + '</div>';
+  return [
+    intro,
+    '',
+    `${labels.category}: {{category}}`,
+    `${labels.subject}: {{subject}}`,
+    `${labels.url}: {{url}}`,
+    '',
+    `${labels.description}:`,
+    '{{description}}',
+    '',
+    `${labels.reporter}: {{reporterName}} ({{reporterEmail}})`,
+    `${labels.site}: {{siteTitle}} – {{siteUrl}}`,
+    `${labels.date}: {{date}}`
+  ].join('\n');
 }

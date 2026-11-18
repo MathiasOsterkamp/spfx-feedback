@@ -13,7 +13,7 @@ export interface IMail {
   /** Empty = no Reply-To header */
   replyTo: string;
   subject: string;
-  /** HTML. All values from the form are escaped. */
+  /** HTML, built from the plain-text template. Template text and all values are escaped. */
   body: string;
 }
 
@@ -27,7 +27,7 @@ export const MAIL_PLACEHOLDERS: MailPlaceholder[] = [
 
 const PLACEHOLDER = /\{\{\s*([A-Za-z]+)\s*\}\}/g;
 
-/** Placeholders of a template that renderTemplate does not know (shown by the setup view). */
+/** Placeholders of a template that renderTemplate does not know (shown by the settings view). */
 export function unknownPlaceholders(template: string): string[] {
   const unknown: string[] = [];
   template.replace(PLACEHOLDER, (match: string, name: string) => {
@@ -52,25 +52,43 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
-/** Recipients without duplicates (case-insensitive), in the order contact(s), mailbox(es). */
-export function recipients(form: IFeedbackForm): string[] {
+/** Addresses without duplicates (case-insensitive) and without the ones in exclude. */
+function unique(emails: string[], exclude: string[] = []): string[] {
   const seen: { [key: string]: boolean } = {};
-  return splitEmails(form.contactEmail).concat(splitEmails(form.mailboxEmail))
-    .filter((email: string) => {
-      const key = email.toLowerCase();
-      if (seen[key]) { return false; }
-      seen[key] = true;
-      return true;
-    });
+  exclude.forEach((email: string) => { seen[email.toLowerCase()] = true; });
+  return emails.filter((email: string) => {
+    const key = email.toLowerCase();
+    if (seen[key]) { return false; }
+    seen[key] = true;
+    return true;
+  });
 }
 
 /**
- * Replaces {{placeholder}} in a template.
- * html = true: values are HTML-escaped, line breaks of the description become <br>.
+ * Recipients of the mail: the contact person(s) in To (required, see validateForm), the shared mailbox in Cc
+ * (optional; an address that is also a contact person is not repeated).
+ */
+export function recipients(form: IFeedbackForm): { to: string[]; cc: string[] } {
+  const contacts = unique(splitEmails(form.contactEmail));
+  return { to: contacts, cc: unique(splitEmails(form.mailboxEmail), contacts) };
+}
+
+/** Placeholders whose value becomes a link in the mail (values are http(s) URLs or an e-mail address). */
+const LINKS: { [K in MailPlaceholder]?: (escaped: string) => string } = {
+  url: (escaped: string) => `<a href="${escaped}">${escaped}</a>`,
+  siteUrl: (escaped: string) => `<a href="${escaped}">${escaped}</a>`,
+  reporterEmail: (escaped: string) => (escaped ? `<a href="mailto:${escaped}">${escaped}</a>` : '')
+};
+
+/**
+ * Replaces {{placeholder}} in a plain-text template.
+ * html = false: result is plain text (subject).
+ * html = true: template text and values are HTML-escaped, line breaks become <br>, URLs and the
+ * reporter's address become links. The template itself cannot contain HTML.
  * Unknown placeholders are removed and logged (typo in the configuration).
  */
 export function renderTemplate(template: string, values: { [K in MailPlaceholder]: string }, html: boolean): string {
-  return template.replace(PLACEHOLDER, (match: string, name: string) => {
+  const rendered = (html ? escapeHtml(template) : template).replace(PLACEHOLDER, (match: string, name: string) => {
     if (!Object.prototype.hasOwnProperty.call(values, name)) {
       logWarning('Unknown placeholder in the mail template', { placeholder: match });
       return '';
@@ -80,8 +98,15 @@ export function renderTemplate(template: string, values: { [K in MailPlaceholder
       return value;
     }
     const escaped = escapeHtml(value);
-    return name === 'description' ? escaped.replace(/\r?\n/g, '<br>') : escaped;
+    const link = LINKS[name as MailPlaceholder];
+    return link ? link(escaped) : escaped;
   });
+  return html ? rendered.replace(/\r?\n/g, '<br>') : rendered;
+}
+
+/** Frame of the mail body: font like the SharePoint UI (mail programs ignore <style>, so inline). */
+function htmlFrame(content: string): string {
+  return `<div style="font-family:'Segoe UI',Arial,sans-serif;font-size:14px;color:#323130;">${content}</div>`;
 }
 
 /** Date and time in the UI language; an unknown locale falls back to the browser default. */
@@ -98,7 +123,9 @@ function formatDate(date: Date, locale: string): string {
  * (validateForm), so the URL is guaranteed to be http(s) and may be used in href.
  */
 export function buildMail(form: IFeedbackForm, origin: IFeedbackOrigin, settings: IMailSettings, now: Date): IMail {
-  const to = recipients(form);
+  const { to, cc: mailboxCc } = recipients(form);
+  // Shared mailbox first, then the fixed copies of the configuration; nobody twice.
+  const cc = unique(mailboxCc.concat(settings.cc), to);
   const values: { [K in MailPlaceholder]: string } = {
     category: form.category,
     subject: form.subject.trim(),
@@ -109,16 +136,17 @@ export function buildMail(form: IFeedbackForm, origin: IFeedbackOrigin, settings
     siteTitle: origin.webTitle || origin.webUrl,
     siteUrl: origin.webUrl,
     date: formatDate(now, settings.locale),
-    recipients: to.join('; ')
+    // The addresses of the form: contact person(s) and shared mailbox.
+    recipients: to.concat(mailboxCc).join('; ')
   };
   return {
     to,
-    cc: settings.cc,
+    cc,
     bcc: settings.bcc,
     from: settings.from,
     replyTo: settings.replyToReporter ? origin.userEmail : '',
     // Plain text: no escaping, but no line breaks (header injection) and limited length.
     subject: singleLine(renderTemplate(settings.subject, values, false)).substr(0, MAX_SUBJECT_LENGTH),
-    body: renderTemplate(settings.body, values, true)
+    body: htmlFrame(renderTemplate(settings.body, values, true))
   };
 }

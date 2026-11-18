@@ -4,9 +4,10 @@
     {
       // Started automatically before debugging (preLaunchTask in launch.json) and
       // keeps running afterwards. Stop it with "Tasks: Terminate Task".
+      // --locale: language of the UI texts (loc/*.js) in debug mode; without it SPFx serves only en-us.
       "label": "gulp serve",
       "type": "shell",
-      "command": "npx gulp serve --nobrowser",
+      "command": "npx gulp serve --nobrowser --locale=de-de",
       "isBackground": true,
       "presentation": {
         "reveal": "silent",
