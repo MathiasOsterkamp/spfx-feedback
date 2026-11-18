@@ -1,0 +1,14 @@
+{
+  // Copy to settings.json (not checked in) and enter your own site, without a trailing slash.
+  "spfx.siteUrl": "https://<tenant>.sharepoint.com/sites/<site>",
+  // Use the project's TypeScript (4.9) in the editor instead of the one bundled with VS Code (6.x).
+  // Confirm once with "TypeScript: Select TypeScript Version" -> "Use Workspace Version".
+  // Otherwise TypeScript 6 reports deprecation errors in tsconfig.json, and VS Code refuses to start
+  // debugging ("Errors exist after running preLaunchTask"), because it checks all errors of the workspace.
+  "js/ts.tsdk.path": "node_modules/typescript/lib",
+  "js/ts.tsdk.promptToUseWorkspaceVersion": true,
+  // Start debugging even if the Problems panel contains errors (VS Code checks all errors of the
+  // workspace, not only those of "gulp serve"). Compiler errors are still shown in the Problems panel
+  // and in the "gulp serve" terminal.
+  "debug.onTaskErrors": "debugAnyway"
+}

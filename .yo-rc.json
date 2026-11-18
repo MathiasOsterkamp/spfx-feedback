@@ -1,0 +1,8 @@
+{
+  "@microsoft/generator-sharepoint": {
+    "version": "1.4.1",
+    "libraryName": "spfx-feedback",
+    "libraryId": "ffc71360-9369-4686-b812-37fd995d1414",
+    "environment": "spo"
+  }
+}

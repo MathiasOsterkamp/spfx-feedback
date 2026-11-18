@@ -1,0 +1,41 @@
+{
+  // Debugging on a real SharePoint site. "gulp serve" is started automatically (tasks.json).
+  // The site URL is read from the setting "spfx.siteUrl" in .vscode/settings.json,
+  // which is not checked in (see .vscode/settings.example.json).
+  //
+  // Extensions do not run in the workbench: the home page of the site is opened with the debug
+  // parameters loadSPFX, debugManifestsFile and customActions (built by tools/open-debug-page.js from
+  // the manifest and sharepoint/assets/elements.xml). Confirm "Load debug scripts" in the browser.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // Opens the page in the default browser with your own profile (already signed in).
+      // Debug in the browser: F12 -> Sources -> webpack:// -> src (source maps).
+      "name": "SharePoint home page (own browser)",
+      "type": "node",
+      "request": "launch",
+      "preLaunchTask": "gulp serve",
+      "program": "${workspaceFolder}/tools/open-debug-page.js",
+      "args": ["${config:spfx.siteUrl}"],
+      "console": "internalConsole",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      // Alternative with breakpoints in VS Code: starts a separate Chrome with an empty profile
+      // (sign in to SharePoint there once).
+      "name": "SharePoint home page (VS Code debugger, separate Chrome)",
+      "type": "chrome",
+      "request": "launch",
+      "preLaunchTask": "gulp serve",
+      "url": "${config:spfx.siteUrl}/?loadSPFX=true&debugManifestsFile=https://localhost:4321/temp/manifests.js&customActions=%7B%22b8fc14bf-9b42-42c0-b306-171cd6145e09%22%3A%7B%22location%22%3A%22ClientSideExtension.ApplicationCustomizer%22%2C%22properties%22%3A%7B%22logLevel%22%3A%22verbose%22%7D%7D%7D",
+      "webRoot": "${workspaceFolder}",
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "webpack:///.././src/*": "${webRoot}/src/*",
+        "webpack:///../../../src/*": "${webRoot}/src/*",
+        "webpack:///../../../../src/*": "${webRoot}/src/*",
+        "webpack:///../../../../../src/*": "${webRoot}/src/*"
+      }
+    }
+  ]
+}

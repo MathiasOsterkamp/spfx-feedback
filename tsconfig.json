@@ -1,0 +1,60 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "forceConsistentCasingInFileNames": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "jsx": "react",
+    "declaration": true,
+    "sourceMap": true,
+    "experimentalDecorators": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": false,
+    "outDir": "lib",
+    "rootDir": "src",
+    "typeRoots": [
+      "./node_modules/@types",
+      "./node_modules/@microsoft"
+    ],
+    "types": [
+      "es6-promise",
+      "webpack-env"
+    ],
+    "lib": [
+      "es6",
+      "es2016",
+      "dom"
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@fluentui/react/*": [
+        "./node_modules/@fluentui/react/*"
+      ],
+      "@pnp/common/*": [
+        "./node_modules/@pnp/common/*"
+      ],
+      "@pnp/logging/*": [
+        "./node_modules/@pnp/logging/*"
+      ],
+      "@pnp/sp/*": [
+        "./node_modules/@pnp/sp/*"
+      ],
+      "@pnp/telemetry-js/*": [
+        "./node_modules/@pnp/telemetry-js/*"
+      ],
+      "@src/*": [
+        "./src/*"
+      ],
+      "FeedbackApplicationCustomizerStrings": [
+        "./src/extensions/feedback/loc/mystrings.d.ts"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ]
+}

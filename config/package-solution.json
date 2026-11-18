@@ -1,0 +1,26 @@
+{
+  "$schema": "https://dev.office.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "spfx-feedback-client-side-solution",
+    "id": "bf5278ea-bf4e-49aa-83ea-4edde257f228",
+    "version": "1.0.0.0",
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": false,
+    "features": [
+      {
+        "title": "Feedback-Button",
+        "description": "Blendet auf allen modernen Seiten der Website den Button „Feedback geben / Inhalte melden“ ein.",
+        "id": "fc256622-75ea-4068-8d50-d774995e26a2",
+        "version": "1.0.0.0",
+        "assets": {
+          "elementManifests": [
+            "elements.xml"
+          ]
+        }
+      }
+    ]
+  },
+  "paths": {
+    "zippedPackage": "solution/spfx-feedback.sppkg"
+  }
+}

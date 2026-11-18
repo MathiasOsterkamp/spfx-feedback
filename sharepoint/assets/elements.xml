@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Registers the feedback button on the site when the app is added
+  ("Site contents -> Add an app"). Everything else is configured in code
+  (src/extensions/feedback/config/feedbackConfig.ts) and per site in the settings list
+  (gear icon in the dialog); here only the log level.
+-->
+<Elements xmlns="http://schemas.microsoft.com/sharepoint/">
+  <CustomAction
+    Title="FeedbackApplicationCustomizer"
+    Location="ClientSideExtension.ApplicationCustomizer"
+    ClientSideComponentId="b8fc14bf-9b42-42c0-b306-171cd6145e09"
+    ClientSideComponentProperties="{&quot;logLevel&quot;:&quot;warning&quot;}">
+  </CustomAction>
+</Elements>
