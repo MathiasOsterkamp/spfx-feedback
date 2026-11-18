@@ -71,6 +71,8 @@ declare interface IFeedbackApplicationCustomizerStrings {
   settingsTabRecipients: string;
   settingsTabTexts: string;
   settingsTabSetup: string;
+  /** Screen reader text of a tab with warning icon, {0} = tab name. */
+  settingsTabWarning: string;
   settingsContactHeading: string;
   settingsContactListLabel: string;
   settingsContactListDescription: string;
@@ -91,9 +93,6 @@ declare interface IFeedbackApplicationCustomizerStrings {
   settingsMailboxHeading: string;
   settingsMailboxLabel: string;
   settingsMailboxDescriptionList: string;
-  settingsMailboxDescriptionPropertyBag: string;
-  settingsMailboxNeedsOwner: string;
-  settingsMailboxReadFailed: string;
   settingsMailboxNotConfigured: string;
   settingsLanguageLabel: string;
   settingsLanguageCustomized: string;

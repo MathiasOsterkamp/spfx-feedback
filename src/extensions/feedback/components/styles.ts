@@ -2,6 +2,13 @@ import { IButtonStyles } from '@fluentui/react/lib/Button';
 import { FontWeights, HighContrastSelector, mergeStyleSets } from '@fluentui/react/lib/Styling';
 import { ITheme, useTheme } from '@fluentui/react/lib/Theme';
 import { memoizeFunction } from '@fluentui/react/lib/Utilities';
+import { MIN_GRAPHIC_CONTRAST, readableColor } from '../utils/theme';
+
+/*
+ * Accessibility: no text below 14px (theme.fonts.medium; the theme also raises Fluent's small sizes, see utils/theme.ts),
+ * text colors from the theme, which corrects them to a contrast of at least 4.5:1 - colors combined here are
+ * checked with readableColor.
+ */
 
 /** Gap between the two columns and around the form. */
 const GUTTER = 16;
@@ -42,7 +49,7 @@ const getClassNames = memoizeFunction((theme: ITheme): IFeedbackClassNames => me
     padding: 0
   },
   hint: {
-    ...theme.fonts.small,
+    ...theme.fonts.medium,
     color: theme.semanticColors.bodySubtext,
     margin: '8px 0 0'
   },
@@ -89,7 +96,8 @@ export interface ISettingsClassNames {
 
 const getSettingsClassNames = memoizeFunction((theme: ITheme): ISettingsClassNames => {
   const text = { ...theme.fonts.medium, margin: 0, overflowWrap: 'break-word' as const, wordBreak: 'break-word' as const };
-  const small = { ...theme.fonts.small, margin: '5px 0 0', overflowWrap: 'break-word' as const, wordBreak: 'break-word' as const };
+  const small = { ...theme.fonts.medium, margin: '5px 0 0', overflowWrap: 'break-word' as const, wordBreak: 'break-word' as const };
+  const background = theme.semanticColors.bodyBackground;
   return mergeStyleSets({
     tabs: {
       marginBottom: 4
@@ -103,10 +111,10 @@ const getSettingsClassNames = memoizeFunction((theme: ITheme): ISettingsClassNam
     },
     // Text below a dropdown, like the description of a text field (Dropdown has no description prop).
     description: { ...small, color: theme.semanticColors.bodySubtext },
-    warning: { ...small, color: theme.semanticColors.warningText || theme.semanticColors.bodyText },
+    warning: { ...small, color: readableColor(background, [theme.semanticColors.warningText, theme.semanticColors.bodyText]) },
     // Small links below a field ("insert default", "use default").
     links: {
-      ...theme.fonts.small,
+      ...theme.fonts.medium,
       margin: '6px 0 0',
       selectors: { '& > *': { marginRight: 16 } }
     },
@@ -122,7 +130,8 @@ const getSettingsClassNames = memoizeFunction((theme: ITheme): ISettingsClassNam
     },
     value: { ...text, color: theme.semanticColors.bodyText },
     problem: { ...text, color: theme.semanticColors.errorText, marginTop: 12 },
-    ok: { ...text, color: theme.semanticColors.successIcon, marginTop: 12 },
+    // The success color is meant for icons: as text it must reach the text contrast.
+    ok: { ...text, color: readableColor(background, [theme.semanticColors.successIcon, theme.semanticColors.bodyText]), marginTop: 12 },
     language: {
       marginTop: 12,
       maxWidth: 320
@@ -157,7 +166,7 @@ const getSettingsClassNames = memoizeFunction((theme: ITheme): ISettingsClassNam
       selectors: { '& > *': { marginRight: 8, marginBottom: 8 } }
     },
     visibility: {
-      ...theme.fonts.small,
+      ...theme.fonts.medium,
       color: theme.semanticColors.bodySubtext,
       margin: '24px 0 0'
     },
@@ -250,7 +259,7 @@ const getPreviewClassNames = memoizeFunction((theme: ITheme): IPreviewClassNames
       borderRadius: 12,
       backgroundColor: theme.palette.themeLighterAlt,
       border: `1px solid ${theme.palette.themeLighter}`,
-      color: theme.palette.themeDarker,
+      color: readableColor(theme.palette.themeLighterAlt, [theme.palette.themeDarker, theme.semanticColors.bodyText]),
       selectors: { [HighContrastSelector]: { border: '1px solid WindowText', color: 'WindowText' } }
     },
     none: {
@@ -280,30 +289,38 @@ export function usePreviewClassNames(): IPreviewClassNames {
   return getPreviewClassNames(useTheme());
 }
 
-/** Round, floating button at the bottom right of the page. */
-export const getFloatingButtonStyles = memoizeFunction((theme: ITheme): IButtonStyles => ({
-  root: {
-    position: 'fixed',
-    right: 24,
-    bottom: 24,
-    // Above the page content, below Fluent layers (dialogs, panels: 1000000).
-    zIndex: 1000,
-    width: 52,
-    height: 52,
-    borderRadius: '50%',
-    border: '2px solid transparent',
-    backgroundColor: theme.palette.themePrimary,
-    color: theme.palette.white,
-    boxShadow: theme.effects.elevation16,
-    selectors: {
-      [HighContrastSelector]: { borderColor: 'ButtonText', backgroundColor: 'ButtonFace', color: 'ButtonText' },
-      '@media print': { display: 'none' }
-    }
-  },
-  rootHovered: { backgroundColor: theme.palette.themeDarkAlt, color: theme.palette.white },
-  rootPressed: { backgroundColor: theme.palette.themeDark, color: theme.palette.white },
-  rootFocused: { outline: `2px solid ${theme.palette.neutralPrimary}`, outlineOffset: '2px' },
-  icon: { fontSize: 22, margin: 0, color: 'inherit' },
-  iconHovered: { color: 'inherit' },
-  iconPressed: { color: 'inherit' }
-}));
+/**
+ * Round, floating button at the bottom right of the page. The icon color is chosen per state so that it
+ * contrasts with the theme color; a theme color too light for the page gets a dark edge (WCAG 1.4.11).
+ */
+export const getFloatingButtonStyles = memoizeFunction((theme: ITheme): IButtonStyles => {
+  const { palette } = theme;
+  const iconOn = (background: string): string => readableColor(background, [palette.white, palette.neutralPrimary], MIN_GRAPHIC_CONTRAST);
+  const edge = readableColor(palette.white, [palette.themePrimary, palette.neutralPrimary], MIN_GRAPHIC_CONTRAST);
+  return {
+    root: {
+      position: 'fixed',
+      right: 24,
+      bottom: 24,
+      // Above the page content, below Fluent layers (dialogs, panels: 1000000).
+      zIndex: 1000,
+      width: 52,
+      height: 52,
+      borderRadius: '50%',
+      border: `2px solid ${edge === palette.themePrimary ? 'transparent' : edge}`,
+      backgroundColor: palette.themePrimary,
+      color: iconOn(palette.themePrimary),
+      boxShadow: theme.effects.elevation16,
+      selectors: {
+        [HighContrastSelector]: { borderColor: 'ButtonText', backgroundColor: 'ButtonFace', color: 'ButtonText' },
+        '@media print': { display: 'none' }
+      }
+    },
+    rootHovered: { backgroundColor: palette.themeDarkAlt, color: iconOn(palette.themeDarkAlt) },
+    rootPressed: { backgroundColor: palette.themeDark, color: iconOn(palette.themeDark) },
+    rootFocused: { outline: `2px solid ${palette.neutralPrimary}`, outlineOffset: '2px' },
+    icon: { fontSize: 22, margin: 0, color: 'inherit' },
+    iconHovered: { color: 'inherit' },
+    iconPressed: { color: 'inherit' }
+  };
+});

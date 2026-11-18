@@ -38,10 +38,8 @@ export interface ISettingsViewProps {
   /** Code configuration: defaults shown as placeholders. */
   base: IFeedbackSettings;
   page: IPageInfo;
-  /** Current user may store entries in the settings list (design permission). */
+  /** Current user may store entries in the settings list (design permission), also the shared mailbox. */
   canSaveSettings: boolean;
-  /** Current user may store the shared mailbox (settings list: design permission, property bag: site owners). */
-  canSaveMailbox: boolean;
   policy: ISecurityPolicy;
   setupService: SetupService;
   webUrl: string;
@@ -123,14 +121,13 @@ const NEW_WINDOW = { target: '_blank', rel: 'noopener noreferrer' };
  * Values can only be saved once the settings list is set up.
  */
 export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props: ISettingsViewProps) => {
-  const { site, defaults, base, page, canSaveSettings, canSaveMailbox, policy, setupService, webUrl, onChanged, onBack } = props;
+  const { site, defaults, base, page, canSaveSettings, policy, setupService, webUrl, onChanged, onBack } = props;
   const formClassNames = useClassNames();
   const classNames = useSettingsClassNames();
 
   const settings = site ? site.settings : base;
   const languages = base.languages;
   const ids = allIds(languages);
-  const mailboxInBag = base.mailbox.storage === 'propertyBag' && !!base.mailbox.key;
 
   const [tab, setTab] = React.useState<Tab>('recipients');
   /** The first status decides the start tab (setup if incomplete), unless the user already chose one. */
@@ -147,8 +144,6 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
   const [contactLists, setContactLists] = React.useState<IContactListOption[] | null | undefined>(undefined);
   /** Lookup columns of Site Pages for the column dropdown: undefined while loading, null if they could not be read (-> text field). */
   const [lookupColumns, setLookupColumns] = React.useState<ILookupColumnOption[] | null | undefined>(undefined);
-  /** Shared mailbox in the property bag (storage "propertyBag"): undefined while loading, null if it could not be read. */
-  const [bagMailbox, setBagMailbox] = React.useState<string | null | undefined>(undefined);
 
   const [values, setValues] = React.useState<Values>({});
   const [dirty, setDirty] = React.useState<Flags>({});
@@ -183,14 +178,6 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
   };
   React.useEffect(loadLookupColumns, [setupService, page.listId]);
 
-  React.useEffect(() => {
-    if (!mailboxInBag) { return; }
-    setupService.getPropertyBagMailbox().then(
-      (value: string) => { if (mounted.current) { setBagMailbox(value); } },
-      () => { if (mounted.current) { setBagMailbox(null); } }
-    );
-  }, [setupService, mailboxInBag]);
-
   // Check the setup with the settings of the site - again after every change of the settings (save, setup).
   const checkRun = React.useRef(0);
   React.useEffect(() => {
@@ -214,14 +201,9 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
 
   // ---- Values -------------------------------------------------------------------------------------------
 
-  /** Values of the inputs as stored: entries of the settings list, the shared mailbox from list or property bag. */
+  /** Values of the inputs as stored: entries of the settings list (the shared mailbox included). */
   const storedValue = (id: string): string => {
-    if (id === 'mailbox') {
-      if (mailboxInBag) { return bagMailbox || ''; }
-      const stored = site && site.stored ? site.stored[base.mailbox.key] : undefined;
-      return typeof stored === 'string' ? stored : '';
-    }
-    const key = entryKey(settings.settingsList.keys, id);
+    const key = id === 'mailbox' ? base.mailbox.key : entryKey(settings.settingsList.keys, id);
     const stored = key && site && site.stored ? site.stored[key] : undefined;
     return typeof stored === 'string' ? stored : '';
   };
@@ -256,8 +238,7 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
     || (!!status && (status.settingsList === 'present' || status.settingsList === 'needsUpdate') && status.valueColumn === 'present');
   const listReadable = !!site && !!site.stored;
   const listEditable = canSaveSettings && listReadable && listReady;
-  const mailboxEditable = mailboxInBag ? canSaveMailbox && typeof bagMailbox === 'string' : (!!base.mailbox.key && listEditable);
-  const editable = (id: string): boolean => (id === 'mailbox' ? mailboxEditable : listEditable);
+  const editable = (id: string): boolean => listEditable && (id !== 'mailbox' || !!base.mailbox.key);
   const anyDirty = ids.some((id: string) => !!dirty[id]);
   const busy = saving || setupBusy;
 
@@ -305,27 +286,18 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
       return;
     }
 
+    // All fields are entries of the settings list, the shared mailbox included.
     const entries: IStoredValues = {};
-    let bagValue: string | undefined;
     changed.forEach((id: string) => {
-      const value = normalize(parseId(id).field, values[id] || '');
-      if (id !== 'mailbox') {
-        entries[entryKey(settings.settingsList.keys, id)] = value;
-      } else if (mailboxInBag) {
-        bagValue = value;
-      } else {
-        entries[base.mailbox.key] = value;
-      }
+      entries[id === 'mailbox' ? base.mailbox.key : entryKey(settings.settingsList.keys, id)] = normalize(parseId(id).field, values[id] || '');
     });
 
     setSaving(true);
     setSaveMessage(undefined);
     setupService.saveValues(entries)
-      .then(() => (bagValue !== undefined ? setupService.setMailbox(bagValue) : undefined))
       .then(
         () => {
           if (!mounted.current) { return; }
-          if (bagValue !== undefined) { setBagMailbox(bagValue); }
           setSaving(false);
           setSaveMessage({ text: strings.settingsSaved, tone: 'ok' });
           setReloading(true);
@@ -575,12 +547,6 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
     );
   };
 
-  const mailboxDescription = (): string => {
-    if (mailboxInBag) {
-      return canSaveMailbox ? formatText(strings.settingsMailboxDescriptionPropertyBag, base.mailbox.key) : strings.settingsMailboxNeedsOwner;
-    }
-    return formatText(strings.settingsMailboxDescriptionList, base.settingsList.title);
-  };
 
   const recipientsTab = (): React.ReactNode => (
     <>
@@ -601,12 +567,11 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
               {...fieldProps('mailbox')}
               label={strings.settingsMailboxLabel}
               placeholder={strings.mailboxPlaceholder}
-              description={mailboxDescription()}
+              description={formatText(strings.settingsMailboxDescriptionList, base.settingsList.title)}
               maxLength={policy.maxTextLength}
               inputMode="email"
             />
           ) : message({ text: strings.settingsMailboxNotConfigured, tone: 'problem' })}
-          {mailboxInBag && bagMailbox === null && message({ text: strings.settingsMailboxReadFailed, tone: 'problem' })}
         </section>
       </div>
     </>
@@ -831,12 +796,19 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
 
   // ---- Layout -------------------------------------------------------------------------------------------
 
-  const loading = !site || status === undefined || (mailboxInBag && bagMailbox === undefined);
+  const loading = !site || status === undefined;
   const tabHasErrors = (id: Tab): boolean => ids.some((fieldKey: string) => !!errors[fieldKey] && tabOf(fieldKey) === id);
-  const tabIcon = (id: Tab): string | undefined => {
-    if (id === 'setup') { return status && !isSetupComplete(status) ? 'Warning' : undefined; }
-    return tabHasErrors(id) ? 'Warning' : undefined;
-  };
+  const tabWarning = (id: Tab): boolean => (id === 'setup' ? !!status && !isSetupComplete(status) : tabHasErrors(id));
+  const tabId = (id: Tab): string => `spfx-feedback-settings-tab-${id}`;
+  /** One tab; a warning is shown as icon and read by screen readers ("Setup - please check"). */
+  const tabItem = (id: Tab, headerText: string): React.ReactElement => (
+    <PivotItem
+      itemKey={id}
+      headerText={headerText}
+      itemIcon={tabWarning(id) ? 'Warning' : undefined}
+      ariaLabel={tabWarning(id) ? formatText(strings.settingsTabWarning, headerText) : undefined}
+    />
+  );
 
   return (
     <>
@@ -844,17 +816,18 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
         className={classNames.tabs}
         headersOnly
         selectedKey={tab}
+        getTabId={(itemKey: string) => tabId(itemKey as Tab)}
         onLinkClick={(item?: PivotItem) => { if (item && item.props.itemKey) { chooseTab(item.props.itemKey as Tab); } }}
       >
-        <PivotItem itemKey="recipients" headerText={strings.settingsTabRecipients} itemIcon={tabIcon('recipients')} />
-        <PivotItem itemKey="texts" headerText={strings.settingsTabTexts} itemIcon={tabIcon('texts')} />
-        <PivotItem itemKey="setup" headerText={strings.settingsTabSetup} itemIcon={tabIcon('setup')} />
+        {tabItem('recipients', strings.settingsTabRecipients)}
+        {tabItem('texts', strings.settingsTabTexts)}
+        {tabItem('setup', strings.settingsTabSetup)}
       </Pivot>
 
       {loading ? (
         <Spinner label={strings.loadingRecipients} className={classNames.loading} />
       ) : (
-        <div className={classNames.panel} role="tabpanel">
+        <div className={classNames.panel} role="tabpanel" aria-labelledby={tabId(tab)}>
           {tab === 'recipients' && recipientsTab()}
           {tab === 'texts' && textsTab()}
           {tab === 'setup' && setupTab()}
@@ -880,7 +853,7 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
       )}
 
       <DialogFooter>
-        {(canSaveSettings || canSaveMailbox) && (
+        {canSaveSettings && (
           <PrimaryButton text={strings.settingsSave} onClick={save} disabled={loading || busy || !anyDirty}>
             {saving && <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginLeft: 8 } }} />}
           </PrimaryButton>

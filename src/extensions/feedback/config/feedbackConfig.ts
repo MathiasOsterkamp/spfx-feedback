@@ -70,22 +70,18 @@ export const FEEDBACK_CONFIG = {
   },
 
   /**
-   * Shared mailbox of the site. Where it is stored is fixed here:
-   *  - 'list':        entry in the settings list (settingsList). Can be edited with "Design" permission
-   *                   (gear icon in the dialog) and works in SharePoint Online without custom scripts.
-   *  - 'propertyBag': property bag of the site. Only site owners can change it; in SharePoint Online
-   *                   custom scripts must be allowed for the site.
+   * Shared mailbox of the site: an entry in the settings list (settingsList). Edited with "Design" permission
+   * (gear icon in the dialog), works in SharePoint Online without custom scripts.
    */
   mailbox: {
-    storage: 'list' as 'list' | 'propertyBag',
-    /** Title of the entry in the settings list, or key in the property bag. */
+    /** Title of the entry in the settings list. */
     key: 'Funktionspostfach'
   },
 
   /**
    * Notification mail, sent with SharePoint's REST API SP.Utilities.Utility.SendEmail.
-   * Recipients: the contact person(s) of the form in To, the shared mailbox in Cc (together with cc below).
-   * Without a contact person the shared mailbox is the recipient (To).
+   * Recipients: the contact person(s) of the form in To (required), the shared mailbox in Cc (optional,
+   * together with cc below).
    */
   mail: {
     /** Fixed additional recipients, e.g. an archive mailbox. Invalid addresses are ignored. */

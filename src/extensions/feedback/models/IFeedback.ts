@@ -19,7 +19,7 @@ export interface IFeedbackSettings {
   contactEmailColumn: IColumnName;
   /** Settings list of the site (config settingsList), code only. */
   settingsList: ISettingsListSettings;
-  /** Where the shared mailbox of the site is stored (config mailbox), code only. */
+  /** Entry of the shared mailbox in the settings list (config mailbox), code only. */
   mailbox: IMailboxSettings;
   /** Notification mail (config mail), template already chosen for the UI language. */
   mail: IMailSettings;
@@ -59,11 +59,9 @@ export interface ISettingsListSettings {
   keys: ISettingKeys;
 }
 
-export type MailboxStorage = 'list' | 'propertyBag';
-
+/** Shared mailbox: always an entry in the settings list. */
 export interface IMailboxSettings {
-  storage: MailboxStorage;
-  /** Title of the entry in the settings list, or key in the property bag. Empty = no pre-filled mailbox. */
+  /** Title of the entry in the settings list. Empty = no pre-filled mailbox (also if the settings list is invalid). */
   key: string;
 }
 

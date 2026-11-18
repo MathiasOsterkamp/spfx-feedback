@@ -27,8 +27,6 @@ export interface IFeedbackProps {
   canConfigure: boolean;
   /** Current user may store entries in the settings list (once it is set up). */
   canSaveSettings: boolean;
-  /** Current user may store the shared mailbox (settings list: design permission, property bag: site owners). */
-  canSaveMailbox: boolean;
 }
 
 /**

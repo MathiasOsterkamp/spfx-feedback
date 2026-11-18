@@ -267,3 +267,15 @@ nicht über `modalProps.styles`, weil Fluent ab 480 px selbst `width: auto` setz
 - Dialog mit Fokusfalle; Spalten als `<fieldset>`/`<legend>`; Pflichtfelder mit `required`.
 - Fehlermeldungen erst nach dem ersten Absenden, danach live. Der Fokus springt auf das erste fehlerhafte Feld.
 - Klick neben den Dialog verwirft keine Eingaben (`isBlocking`). Enter in einem einzeiligen Feld öffnet die Vorschau; dort liegt der Fokus auf „Jetzt senden“.
+- **Schriftgröße mindestens 14 px** überall: Das Theme (`utils/theme.ts`) hebt die kleinen Fluent-Stufen `tiny`, `xSmall`, `small` und
+  `smallPlus` (10–12 px) auf 14 px an. Das betrifft auch Feldbeschreibungen, Fehlermeldungen, Meldungsleisten und Ladeanzeigen.
+  Die eigenen Styles verwenden `fonts.medium` (14 px) oder größer, die Mail ist mit 14 px formatiert.
+- **Kontrast nach WCAG 2.1 AA, auch mit beliebigem Site-Theme:** Das Theme prüft alle Text-/Hintergrund-Paare (Text, Untertext,
+  Links, Eingabefelder, Platzhalter, Buttons, Primär-Buttons, Menüs, Meldungsleisten) auf mindestens 4,5 : 1, Statussymbole und
+  Feldrahmen auf 3 : 1. Reicht eine Farbe des Site-Themes nicht, wird sie durch die Textfarbe bzw. Schwarz oder Weiß ersetzt. Eigene
+  Farbkombinationen (Erfolgsmeldung, Adress-Chips, Symbol des schwebenden Buttons, dessen Rand auf hellem Theme) werden mit
+  `readableColor` genauso geprüft. Deaktivierte Elemente sind nach WCAG ausgenommen.
+- Links sind unterstrichen, also nicht nur an der Farbe erkennbar.
+- Einstellungen: Tabs und Inhaltsbereich sind über `aria-labelledby` verbunden; ein Tab mit Warnsymbol wird auch vorgelesen
+  („Einrichtung – bitte prüfen“). Status in der Checkliste als Text, nicht nur als Symbol; Meldungen mit `role="status"`/`"alert"`.
+- Vorschau: Kopfbereich als Tabelle mit Zeilenüberschriften (`th scope="row"`).

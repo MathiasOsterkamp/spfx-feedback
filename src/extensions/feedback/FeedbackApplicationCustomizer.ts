@@ -81,9 +81,7 @@ export default class FeedbackApplicationCustomizer extends BaseApplicationCustom
       setupService: new SetupService(http, web.absoluteUrl, web.serverRelativeUrl, settings),
       // Gear icon (setup): at least "Design" on the site - this permission level includes ManageLists.
       canConfigure: web.permissions.hasPermission(SPPermission.manageLists),
-      canSaveSettings,
-      // Shared mailbox: settings list -> design permission is enough; property bag -> only site owners (ManageWeb).
-      canSaveMailbox: settings.mailbox.storage === 'list' ? canSaveSettings : web.permissions.hasPermission(SPPermission.manageWeb)
+      canSaveSettings
     };
 
     // A container of its own at the end of the body: the button floats over the page

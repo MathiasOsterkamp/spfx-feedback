@@ -37,8 +37,6 @@ export interface IFeedbackDialogProps {
   canConfigure: boolean;
   /** Current user may store entries in the settings list (once it is set up). */
   canSaveSettings: boolean;
-  /** Current user may store the shared mailbox (settings list: design permission, property bag: site owners). */
-  canSaveMailbox: boolean;
   /** The page on which the dialog was opened (item of the Site Pages library). */
   page: IPageInfo;
   /** Pre-filled value of the URL field. */
@@ -95,7 +93,7 @@ interface IFocusable { focus: () => void; }
 export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (props: IFeedbackDialogProps) => {
   const {
     origin, policy, settingsService, mailService, recipientService, setupService,
-    canConfigure, canSaveSettings, canSaveMailbox, page, pageUrl, onDismiss
+    canConfigure, canSaveSettings, page, pageUrl, onDismiss
   } = props;
   const classNames = useClassNames();
 
@@ -301,7 +299,6 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
           base={settingsService.base}
           page={page}
           canSaveSettings={canSaveSettings}
-          canSaveMailbox={canSaveMailbox}
           policy={policy}
           setupService={setupService}
           webUrl={origin.webUrl}

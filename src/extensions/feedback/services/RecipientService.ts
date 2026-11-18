@@ -26,8 +26,7 @@ type RawResult = string[] | RecipientStatus;
  *
  * - Contact person: lookup column of the current page (Site Pages library, config contact.pageColumn or
  *   settings list). The e-mail column (config contact.emailColumn) of the selected entry(s) in the contact list is read.
- * - Shared mailbox (config mailbox): entry of the settings list (already read by SettingsService) or value
- *   of the property bag of the current web.
+ * - Shared mailbox (config mailbox): entry of the settings list (already read by SettingsService).
  *
  * The result carries a status, so that the form can tell "nothing stored for this page" from
  * "column missing" and offer the setup. Read only when the dialog opens, then cached for the page view.
@@ -35,7 +34,6 @@ type RawResult = string[] | RecipientStatus;
 export class RecipientService {
   private readonly api: string;
   private contactCache: { [pageKey: string]: Promise<IRecipientSource> } = {};
-  private propertyBagCache: Promise<IRecipientSource> | undefined;
 
   constructor(
     private readonly httpClient: SPHttpClient,
@@ -50,10 +48,9 @@ export class RecipientService {
       .then(([contact, mailbox]: [IRecipientSource, IRecipientSource]) => ({ contact, mailbox }));
   }
 
-  /** Forgets cached results, e.g. after a column was created or the mailbox was stored. */
+  /** Forgets cached results, e.g. after a column was created. */
   public reset(): void {
     this.contactCache = {};
-    this.propertyBagCache = undefined;
   }
 
   private getContact(page: IPageInfo, settings: IFeedbackSettings): Promise<IRecipientSource> {
@@ -120,37 +117,18 @@ export class RecipientService {
     });
   }
 
+  /** Entry of the settings list, already read by SettingsService: no request of its own. */
   private getMailbox(site: ISiteSettings): Promise<IRecipientSource> {
-    const { key, storage } = site.settings.mailbox;
+    const key = site.settings.mailbox.key;
     if (!key) {
       return Promise.resolve(source('notConfigured'));
     }
-    if (storage === 'list') {
-      // stored undefined: the settings list could not be read (logged by SettingsService).
-      return Promise.resolve(site.stored ? this.evaluateMailbox(textOf(site.stored[key])) : source('error'));
+    if (!site.stored) {
+      // The settings list could not be read (logged by SettingsService).
+      return Promise.resolve(source('error'));
     }
-    if (!this.propertyBagCache) {
-      this.propertyBagCache = this.readMailboxFromPropertyBag(key)
-        .then((values: string[]) => this.evaluateMailbox(values))
-        .catch((error: unknown) => {
-          logWarning('Shared mailbox could not be read', { key, error: String(error) });
-          this.propertyBagCache = undefined;
-          return source('error');
-        });
-    }
-    return this.propertyBagCache;
-  }
-
-  private evaluateMailbox(values: string[]): IRecipientSource {
-    const nonEmpty = values.filter((value: string) => !!value.trim());
-    return this.evaluate(nonEmpty.length > 0 ? nonEmpty : 'missing', 'mailbox');
-  }
-
-  /** Property bag: $select reads only this one value. A missing key returns an empty object. */
-  private readMailboxFromPropertyBag(key: string): Promise<string[]> {
-    const name = encodePropertyName(key);
-    return this.getJson(`${this.api}/web/AllProperties?$select=${name}`)
-      .then((json: unknown) => textOf(odataEntity(json)[name]));
+    const nonEmpty = textOf(site.stored[key]).filter((value: string) => !!value.trim());
+    return Promise.resolve(this.evaluate(nonEmpty.length > 0 ? nonEmpty : 'missing', 'mailbox'));
   }
 
   /** Turns raw values into a status: no values -> empty, values without a valid address -> invalid. */
@@ -210,12 +188,4 @@ export function settingsListUrl(api: string, webServerRelativeUrl: string, relat
 /** Text value; may contain several addresses separated by ";" (split by validEmails). */
 function textOf(value: unknown): string[] {
   return typeof value === 'string' ? [value] : [];
-}
-
-/**
- * REST returns property bag keys as OData property names: every character other than a letter or digit
- * is encoded as _xHHHH_ ("My_Key" -> "My_x005f_Key", "My Key" -> "My_x0020_Key").
- */
-export function encodePropertyName(key: string): string {
-  return key.replace(/[^A-Za-z0-9]/g, (c: string) => '_x' + ('000' + c.charCodeAt(0).toString(16)).slice(-4) + '_');
 }

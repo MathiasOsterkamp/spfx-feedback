@@ -41,7 +41,6 @@ export interface IFeedbackConfig {
     keys: { contactList: string; contactColumn: string; categories: string; mailSubject: string; mailBody: string };
   };
   mailbox: {
-    storage: string;
     key: string;
   };
   mail: {
@@ -74,7 +73,7 @@ export function settingEntryKeys(settings: IFeedbackSettings): string[] {
 
 /**
  * All entries of the settings list with the defaults of the code configuration, as "Set up" creates them:
- * contact list (name in its URL), lookup column, shared mailbox (storage "list", empty) and per language
+ * contact list (name in its URL), lookup column, shared mailbox (empty) and per language
  * categories (one per line), mail subject and mail text.
  */
 export function defaultSettingEntries(base: IFeedbackSettings): IStoredValues {
@@ -85,9 +84,7 @@ export function defaultSettingEntries(base: IFeedbackSettings): IStoredValues {
   };
   add(keys.contactList, base.contactList.url.substring('Lists/'.length));
   add(keys.contactColumn, base.contactColumn.internalName);
-  if (base.mailbox.storage === 'list') {
-    add(base.mailbox.key, '');
-  }
+  add(base.mailbox.key, '');
   base.languages.forEach((language: ILanguageSettings) => {
     add(languageKey(keys.categories, language.code), language.categories.join('\n'));
     add(languageKey(keys.mailSubject, language.code), language.subject);
@@ -207,20 +204,19 @@ function createSettingsList(config: IFeedbackConfig): ISettingsListSettings {
     title: singleLine(list.title || '') || url.substr(6),
     valueColumn: { internalName: column, displayName: singleLine(list.valueColumn.displayName || '') || column },
     keys: {
-      contactList: safePropertyKey(keys.contactList),
-      contactColumn: safePropertyKey(keys.contactColumn),
-      categories: safePropertyKey(keys.categories),
-      mailSubject: safePropertyKey(keys.mailSubject),
-      mailBody: safePropertyKey(keys.mailBody)
+      contactList: safeEntryKey(keys.contactList),
+      contactColumn: safeEntryKey(keys.contactColumn),
+      categories: safeEntryKey(keys.categories),
+      mailSubject: safeEntryKey(keys.mailSubject),
+      mailBody: safeEntryKey(keys.mailBody)
     }
   };
 }
 
 function createMailboxSettings(config: IFeedbackConfig, settingsList: ISettingsListSettings): IMailboxSettings {
-  const storage = config.mailbox.storage === 'propertyBag' ? 'propertyBag' : 'list';
-  const key = safePropertyKey(config.mailbox.key);
+  const key = safeEntryKey(config.mailbox.key);
   // An invalid settings list is already logged: no mailbox from there.
-  return { storage, key: storage === 'list' && !settingsList.url ? '' : key };
+  return { key: settingsList.url ? key : '' };
 }
 
 /**
@@ -344,8 +340,8 @@ function safeFieldName(value: unknown, setting: string): string {
   return name;
 }
 
-/** Property bag keys are encoded for the request (see RecipientService), only the length is limited. */
-function safePropertyKey(value: unknown): string {
+/** Titles of settings list entries: single line, at most 255 characters (title column of a list). */
+function safeEntryKey(value: unknown): string {
   const key = typeof value === 'string' ? singleLine(value) : '';
   return key.length <= 255 ? key : '';
 }

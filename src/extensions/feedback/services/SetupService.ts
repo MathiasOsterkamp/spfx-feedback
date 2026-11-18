@@ -1,5 +1,5 @@
 import { SPHttpClient, SPHttpClientResponse } from '@microsoft/sp-http';
-import { encodePropertyName, GUID, listUrl, NOMETADATA } from './RecipientService';
+import { GUID, listUrl, NOMETADATA } from './RecipientService';
 import { IFeedbackSettings, IListRef, ISetupStatus, IStoredValues, SetupPartStatus } from '../models/IFeedback';
 import { logError, logInfo, logVerbose } from '../utils/logging';
 import { defaultSettingEntries, FIELD_NAME, LIST_NAME } from '../utils/sanitize';
@@ -48,9 +48,6 @@ const ADD_TO_ALL_CONTENT_TYPES = 4;
 const ADD_FIELD_INTERNAL_NAME_HINT = 8;
 const ADD_FIELD_TO_DEFAULT_VIEW = 16;
 
-/** TypeId of SP.ClientContext, used for "ClientContext.Current" in CSOM requests. */
-const CLIENT_CONTEXT_TYPE_ID = '{3747adcd-a3c3-41b9-bfab-4a64dd2f1e0a}';
-
 /** Verbose JSON (with __metadata); the empty OData-Version header suppresses SPHttpClient's "4.0". */
 const VERBOSE_HEADERS = { 'Accept': 'application/json;odata=nometadata', 'Content-Type': 'application/json;odata=verbose', 'OData-Version': '' };
 
@@ -85,23 +82,20 @@ export function canSetUp(status: ISetupStatus): boolean {
  *    the lookup column in the Site Pages library. Every step checks first whether its part already exists,
  *    so the setup can simply be repeated after a partial failure.
  *  - saveValues: entries of the settings list (the list must have been set up)
- *  - shared mailbox in the property bag of the web (config mailbox.storage "propertyBag")
  *
  * SharePoint checks the permissions on the server.
  */
 export class SetupService {
-  private readonly webUrl: string;
   private readonly api: string;
 
   constructor(
     private readonly httpClient: SPHttpClient,
     webAbsoluteUrl: string,
     private readonly webServerRelativeUrl: string,
-    /** Code configuration: settings list and mailbox storage (not changeable in the settings list). */
+    /** Code configuration: settings list and its entries (not changeable in the settings list). */
     private readonly base: IFeedbackSettings
   ) {
-    this.webUrl = webAbsoluteUrl.replace(/\/+$/, '');
-    this.api = this.webUrl + '/_api';
+    this.api = webAbsoluteUrl.replace(/\/+$/, '') + '/_api';
   }
 
   /**
@@ -245,22 +239,6 @@ export class SetupService {
         .sort((a: ILookupColumnOption, b: ILookupColumnOption) => a.title.localeCompare(b.title)));
   }
 
-  /** Raw value of the shared mailbox in the property bag (storage "propertyBag"); '' if the key does not exist. */
-  public getPropertyBagMailbox(): Promise<string> {
-    const name = encodePropertyName(this.base.mailbox.key);
-    return this.get(`${this.api}/web/AllProperties?$select=${name}`, 'Shared mailbox could not be read')
-      .then((json: unknown) => {
-        const value = odataEntity(json)[name];
-        return typeof value === 'string' ? value : '';
-      });
-  }
-
-  /** Stores the shared mailbox where the configuration says (settings list or property bag). */
-  public setMailbox(value: string): Promise<void> {
-    const { storage, key } = this.base.mailbox;
-    return storage === 'list' ? this.saveValues({ [key]: value }) : this.setMailboxInPropertyBag(value);
-  }
-
   /**
    * Stores entries in the settings list: updates the entry whose title is the key (the first one, as
    * SettingsService reads it), or creates it. An empty value clears an existing entry (= default of the code)
@@ -356,49 +334,6 @@ export class SetupService {
     return listIdPromise
       .then((contactListId: string) => this.ensureEmailColumn(settings, contactListId).then(() => contactListId))
       .then((contactListId: string) => this.ensurePageColumn(settings, sitePagesListId, contactListId));
-  }
-
-  /**
-   * Property bag of the web. REST cannot write the property bag, therefore a CSOM request
-   * (client.svc/ProcessQuery) sets web.AllProperties[key] and calls web.Update().
-   */
-  private setMailboxInPropertyBag(value: string): Promise<void> {
-    const key = this.base.mailbox.key;
-    const xml = '<Request xmlns="http://schemas.microsoft.com/sharepoint/clientquery/2009" SchemaVersion="15.0.0.0"'
-      + ' LibraryVersion="16.0.0.0" ApplicationName="spfx-feedback">'
-      + '<Actions>'
-      + '<Method Name="SetFieldValue" Id="1" ObjectPathId="4"><Parameters>'
-      + `<Parameter Type="String">${escapeXml(key)}</Parameter>`
-      + `<Parameter Type="String">${escapeXml(value)}</Parameter>`
-      + '</Parameters></Method>'
-      + '<Method Name="Update" Id="2" ObjectPathId="2" />'
-      + '</Actions>'
-      + '<ObjectPaths>'
-      + `<StaticProperty Id="0" TypeId="${CLIENT_CONTEXT_TYPE_ID}" Name="Current" />`
-      + '<Property Id="2" ParentId="0" Name="Web" />'
-      + '<Property Id="4" ParentId="2" Name="AllProperties" />'
-      + '</ObjectPaths>'
-      + '</Request>';
-    const url = this.webUrl + '/_vti_bin/client.svc/ProcessQuery';
-    logVerbose('POST ' + url, { key });
-    return this.httpClient.post(url, SPHttpClient.configurations.v1, {
-      // client.svc is no REST URL: SPHttpClient needs the web URL for the request digest.
-      webUrl: this.webUrl,
-      headers: { 'Content-Type': 'text/xml', 'Accept': 'application/json', 'OData-Version': '' },
-      body: xml
-    })
-      .then((response: SPHttpClientResponse) => this.checked(response, 'Mailbox could not be stored'))
-      .then((json: unknown) => {
-        // CSOM answers with HTTP 200 and reports errors in the first array element.
-        const info = Array.isArray(json) && json[0] && typeof json[0] === 'object' ? (json[0] as IUntyped).ErrorInfo : undefined;
-        if (info && typeof info === 'object') {
-          const error = info as IUntyped;
-          const denied = /UnauthorizedAccess|AccessDenied/i.test(String(error.ErrorTypeName || ''));
-          logError('Mailbox could not be stored', { error: error.ErrorMessage, type: error.ErrorTypeName });
-          throw new SetupError(String(error.ErrorMessage || 'CSOM error'), denied);
-        }
-        logInfo('Shared mailbox stored', { key });
-      });
   }
 
   /** Custom lists of the site (template 100) with ID, title, URL and hidden flag. */
