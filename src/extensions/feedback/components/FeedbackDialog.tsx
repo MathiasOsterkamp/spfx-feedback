@@ -46,7 +46,6 @@ const DIALOG_MAX_WIDTH = 1100;
 
 const DIALOG_WIDTH = '90vw';
 
-/** Only the same media query overrides Fluent's "width: auto" in "@media (min-width: 480px)" (dialog "styles", not modalProps). */
 const DIALOG_STYLES: Partial<IDialogStyles> = {
   main: {
     width: DIALOG_WIDTH,
@@ -72,7 +71,6 @@ type Status = 'editing' | 'sending' | 'sent' | 'failed';
 
 interface IFocusable { focus: () => void; }
 
-/** Mounted anew for every opening, so the form always starts fresh. */
 export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (props: IFeedbackDialogProps) => {
   const {
     origin, policy, settingsService, mailService, recipientService, setupService,
@@ -94,9 +92,7 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
   const [site, setSite] = React.useState<ISiteSettings | undefined>(undefined);
   const [defaults, setDefaults] = React.useState<IRecipientDefaults | undefined>(undefined);
   const [reloadCount, setReloadCount] = React.useState(0);
-  /** The form state lives here, so it survives the preview and the settings view. */
   const [view, setView] = React.useState<'form' | 'preview' | 'settings'>('form');
-  /** Exactly this mail is sent. */
   const [preview, setPreview] = React.useState<IMail | undefined>(undefined);
 
   const fieldRefs = React.useRef<{ [K in FeedbackField]?: IFocusable | null }>({});
@@ -104,7 +100,6 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
   const sendButton = React.useRef<IButton>(null);
   const mounted = React.useRef(true);
   React.useEffect(() => () => { mounted.current = false; }, []);
-  /** Last pre-filled addresses: a field the user changed is not overwritten on reload. */
   const prefilled = React.useRef({ contactEmail: '', mailboxEmail: '' });
 
   React.useEffect(() => {
@@ -147,14 +142,12 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
   const busy = status === 'sending';
   const done = status === 'sent';
 
-  // After sending only the confirmation and "Schließen" remain: move the focus there.
   React.useEffect(() => {
     if (done && closeButton.current) {
       closeButton.current.focus();
     }
   }, [done]);
 
-  // The preview replaces the form: the focus goes to "Senden".
   React.useEffect(() => {
     if (view === 'preview' && sendButton.current) {
       sendButton.current.focus();
@@ -218,7 +211,6 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
 
   const showSettings = canConfigure && view === 'settings';
   const showPreviewView = view === 'preview' && !!preview;
-  // Form only: the settings view has its own "Back", which asks before discarding changes.
   const topButtons: IButtonProps[] = canConfigure && view === 'form' && !busy && !done ? [{
     iconProps: { iconName: 'Settings' },
     title: strings.settingsOpen,
@@ -264,7 +256,6 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
           </DialogFooter>
         </>
       ) : showSettings ? (
-        // Not inside the feedback form: Enter in a settings field must not send the report.
         <SettingsView
           site={site}
           defaults={defaults}
@@ -278,9 +269,6 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
           onBack={() => setView('form')}
         />
       ) : (
-        <>
-          {/* noValidate: browser bubbles would compete with the Fluent messages. Footer inside the form:
-              Enter in a single-line field submits, i.e. shows the preview (also in IE11). */}
           <form noValidate onSubmit={onFormSubmit}>
           {showErrors && hasErrors(errors) && (
             <MessageBar messageBarType={MessageBarType.warning} className={classNames.message}>{strings.errorForm}</MessageBar>
@@ -390,7 +378,6 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
             <DefaultButton text={strings.cancel} onClick={onDismiss} disabled={busy} />
           </DialogFooter>
           </form>
-        </>
       )}
     </Dialog>
   );

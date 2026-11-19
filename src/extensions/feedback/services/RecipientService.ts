@@ -7,7 +7,6 @@ import { asArray, IUntyped, odataEntity, odataItems } from '../utils/untyped';
 
 export const GUID = /^\{?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\}?$/i;
 
-/** OData v3 JSON without metadata (SharePoint 2016/2019 and Online). */
 export const NOMETADATA = { headers: { 'Accept': 'application/json;odata=nometadata', 'OData-Version': '' } };
 
 const LOOKUP_TYPES = ['Lookup', 'LookupMulti'];
@@ -19,7 +18,6 @@ interface IFieldSchema {
 
 type RawResult = string[] | RecipientStatus;
 
-/** The status lets the form tell "nothing stored" from "column missing" and offer the setup. */
 export class RecipientService {
   private readonly api: string;
   private contactCache: { [pageKey: string]: Promise<IRecipientSource> } = {};
@@ -46,18 +44,15 @@ export class RecipientService {
     if (!column) {
       return Promise.resolve(source('notConfigured'));
     }
-    // The column is part of the key: it can be changed in the settings list.
     const key = page.listId + '|' + page.itemId + '|' + column + '|' + settings.contactEmailColumn.internalName;
     if (!this.contactCache[key]) {
       this.contactCache[key] = this.readContact(page, settings)
         .catch((error: unknown) => {
-          // 404: the lookup target list was deleted - fixed by the setup.
           if ((error as { status?: number }).status === 404) {
             logWarning('The list of the contact lookup column does not exist, run the setup (gear icon)', { column });
             return source('missing');
           }
           logWarning('Contact person could not be read', { column, error: String(error) });
-          // Not cached: the next opening tries again.
           delete this.contactCache[key];
           return source('error');
         });
@@ -149,7 +144,6 @@ function source(status: RecipientStatus): IRecipientSource {
   return { status, emails: [] };
 }
 
-/** Throws for an invalid ID (it is inserted into the URL). */
 export function listUrl(api: string, listId: string): string {
   const match = GUID.exec(listId);
   if (!match) {
@@ -158,7 +152,6 @@ export function listUrl(api: string, listId: string): string {
   return `${api}/web/lists(guid'${match[1]}')`;
 }
 
-/** getlist() needs SharePoint 2016 or later. */
 export function settingsListUrl(api: string, webServerRelativeUrl: string, relativeListUrl: string): string {
   const serverRelative = webServerRelativeUrl.replace(/\/+$/, '') + '/' + relativeListUrl;
   return `${api}/web/getlist('${encodeURIComponent(serverRelative.replace(/'/g, "''"))}')`;

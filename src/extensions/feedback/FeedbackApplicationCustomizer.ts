@@ -17,7 +17,6 @@ import { createSettings } from './utils/sanitize';
 import { createSharePointTheme } from './utils/theme';
 import { asRecord } from './utils/untyped';
 
-/** Set in sharepoint/assets/elements.xml; everything else is configured in config/feedbackConfig.ts. */
 export interface IFeedbackApplicationCustomizerProperties {
   logLevel?: LogLevelName;
 }
@@ -27,7 +26,6 @@ const SITE_PAGES_TEMPLATE = 119;
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- an import would pull config/ into the compiler's rootDir and shift the output in lib/
 const SOLUTION = asRecord(asRecord(require('../../../config/package-solution.json')).solution);
 
-/** Prevents a second button if the custom action is registered twice. */
 const CONTAINER_ID = 'spfx-feedback-button';
 
 export default class FeedbackApplicationCustomizer extends BaseApplicationCustomizer<IFeedbackApplicationCustomizerProperties> {
@@ -43,13 +41,10 @@ export default class FeedbackApplicationCustomizer extends BaseApplicationCustom
       return Promise.resolve();
     }
 
-    // SharePoint sometimes already registers icons with the same name.
     setIconOptions({ disableWarnings: true });
-    // On-premises without internet: host the font files yourself and call initializeIcons('https://.../fonts/').
     initializeIcons();
 
     const policy = createSecurityPolicy();
-    // The settings list is read only when the dialog opens (SettingsService).
     const settings = createSettings(FEEDBACK_CONFIG, this.context.pageContext.cultureInfo.currentUICultureName, policy);
     const web = this.context.pageContext.web;
     const user = this.context.pageContext.user;
@@ -74,12 +69,10 @@ export default class FeedbackApplicationCustomizer extends BaseApplicationCustom
       canSaveSettings
     };
 
-    // Own container instead of a SharePoint placeholder: the button floats.
     this.container = document.createElement('div');
     this.container.id = CONTAINER_ID;
     document.body.appendChild(this.container);
 
-    // Modern pages navigate without reloading (e.g. from a page to a list): check again every time.
     this.context.application.navigatedEvent.add(this, this.render);
     this.render();
 
@@ -106,7 +99,6 @@ export default class FeedbackApplicationCustomizer extends BaseApplicationCustom
     ReactDom.render(React.createElement(Feedback, { ...this.baseProps, page }), this.container);
   }
 
-  /** SPFx 1.4.1 does not expose the list base template: legacy page context, else the URL ".../SitePages" decides. */
   private currentSitePage(): IPageInfo | undefined {
     const pageContext = this.context.pageContext;
     const legacy = asRecord(pageContext.legacyPageContext);
@@ -122,7 +114,6 @@ export default class FeedbackApplicationCustomizer extends BaseApplicationCustom
     if (!isSitePages) {
       return undefined;
     }
-    // Only decides which setup actions are offered; SharePoint checks on the server.
     const web = pageContext.web;
     return {
       listId: list.id.toString(),

@@ -7,12 +7,10 @@ export interface IMailPreviewProps {
   mail: IMail;
 }
 
-/** Deliberately not shown: the sender (fixed by SharePoint) and BCC (hidden also from the reporter). */
 export const MailPreview: React.FunctionComponent<IMailPreviewProps> = (props: IMailPreviewProps) => {
   const { mail } = props;
   const classNames = usePreviewClassNames();
 
-  // Links would replace the SharePoint page (and the form): open them in a new window.
   const onBodyClick = (event: React.MouseEvent<HTMLDivElement>): void => {
     let element = event.target as HTMLElement | null;
     while (element && element !== event.currentTarget && element.tagName !== 'A') {

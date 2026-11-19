@@ -7,12 +7,9 @@ export interface IMail {
   to: string[];
   cc: string[];
   bcc: string[];
-  /** Empty = SharePoint's default sender */
   from: string;
-  /** Empty = no Reply-To header */
   replyTo: string;
   subject: string;
-  /** HTML; template text and all values are escaped. */
   body: string;
 }
 
@@ -36,10 +33,8 @@ export function unknownPlaceholders(template: string): string[] {
   return unknown;
 }
 
-/** SharePoint limits the subject. */
 const MAX_SUBJECT_LENGTH = 255;
 
-/** For HTML content and attribute values. */
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -65,17 +60,14 @@ export function recipients(form: IFeedbackForm): { to: string[]; cc: string[] } 
   return { to: contacts, cc: unique(splitEmails(form.mailboxEmail), contacts) };
 }
 
-/** Values are already escaped and validated (http(s) URL or e-mail address). */
 const LINKS: { [K in MailPlaceholder]?: (escaped: string) => string } = {
   url: (escaped: string) => `<a href="${escaped}">${escaped}</a>`,
   siteUrl: (escaped: string) => `<a href="${escaped}">${escaped}</a>`,
   reporterEmail: (escaped: string) => (escaped ? `<a href="mailto:${escaped}">${escaped}</a>` : '')
 };
 
-/** Empty brackets left by an empty value, e.g. "Anonymous ({{reporterEmail}})". */
 const EMPTY_BRACKETS = /[ \t]*\([ \t]*\)/g;
 
-/** html: template text is escaped too, so the template itself cannot inject HTML. */
 function renderTemplate(template: string, values: { [K in MailPlaceholder]: string }, html: boolean): string {
   const rendered = (html ? escapeHtml(template) : template).replace(PLACEHOLDER, (match: string, name: string) => {
     if (!Object.prototype.hasOwnProperty.call(values, name)) {
@@ -93,17 +85,14 @@ function renderTemplate(template: string, values: { [K in MailPlaceholder]: stri
   return html ? rendered.replace(/\r?\n/g, '<br>') : rendered;
 }
 
-/** The empty e-mail address also suppresses Reply-To. */
 export function anonymousOrigin(origin: IFeedbackOrigin, name: string): IFeedbackOrigin {
   return { ...origin, userName: name, userEmail: '' };
 }
 
-/** Inline styles: mail programs ignore <style>. */
 function htmlFrame(content: string): string {
   return `<div style="font-family:'Segoe UI',Arial,sans-serif;font-size:14px;color:#323130;">${content}</div>`;
 }
 
-/** An unknown locale throws: fall back to the browser default. */
 function formatDate(date: Date, locale: string): string {
   try {
     return date.toLocaleString(locale);
@@ -112,7 +101,6 @@ function formatDate(date: Date, locale: string): string {
   }
 }
 
-/** The form must be validated before (validateForm): the URL is then http(s) and safe in href. */
 export function buildMail(form: IFeedbackForm, origin: IFeedbackOrigin, settings: IMailSettings, now: Date): IMail {
   const { to, cc: mailboxCc } = recipients(form);
   const cc = unique(mailboxCc.concat(settings.cc), to);
@@ -134,7 +122,6 @@ export function buildMail(form: IFeedbackForm, origin: IFeedbackOrigin, settings
     bcc: settings.bcc,
     from: settings.from,
     replyTo: settings.replyToReporter ? origin.userEmail : '',
-    // Plain text: no escaping, but no line breaks (header injection).
     subject: singleLine(renderTemplate(settings.subject, values, false)).substr(0, MAX_SUBJECT_LENGTH),
     body: htmlFrame(renderTemplate(settings.body, values, true))
   };

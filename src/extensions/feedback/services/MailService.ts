@@ -2,10 +2,6 @@ import { SPHttpClient, SPHttpClientResponse } from '@microsoft/sp-http';
 import { logError, logInfo, logVerbose } from '../utils/logging';
 import { IMail } from '../utils/mail';
 
-/**
- * SP.Utilities.Utility.SendEmail: the sender is SharePoint. SharePoint 2019 needs outgoing SMTP configured in
- * Central Administration; SharePoint Online delivers only to recipients inside the organization.
- */
 export class MailService {
   private readonly endpoint: string;
 
@@ -14,14 +10,12 @@ export class MailService {
   }
 
   public send(mail: IMail): Promise<void> {
-    // Verbose format with __metadata: rejected under SPHttpClient's default "OData-Version: 4.0" (header emptied below).
     const properties: { [key: string]: unknown } = {
       __metadata: { type: 'SP.Utilities.EmailProperties' },
       To: { results: mail.to },
       Subject: mail.subject,
       Body: mail.body
     };
-    // Optional parts only if set: empty collections or an empty sender can be rejected.
     if (mail.cc.length > 0) {
       properties.CC = { results: mail.cc };
     }

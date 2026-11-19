@@ -6,10 +6,8 @@ import { logVerbose, logWarning } from '../utils/logging';
 import { applyStoredValues, settingEntryKeys } from '../utils/sanitize';
 import { IUntyped, odataItems } from '../utils/untyped';
 
-/** Protects against a list that was filled by mistake. */
 const MAX_ENTRIES = 500;
 
-/** Never rejects: unreadable list -> stored undefined (code configuration applies); missing list or column -> {}. */
 export class SettingsService {
   private readonly api: string;
   private cache: Promise<ISiteSettings> | undefined;
@@ -39,14 +37,12 @@ export class SettingsService {
     this.cache = undefined;
   }
 
-  /** Only the known keys are kept; for duplicate titles the first entry (lowest ID) counts. */
   private readStored(): Promise<IStoredValues | undefined> {
     const { url, valueColumn } = this.base.settingsList;
     if (!url) {
       return Promise.resolve({});
     }
     const column = valueColumn.internalName;
-    // All languages: the settings view shows the entries of every language.
     const known = settingEntryKeys(this.base);
     const request = `${settingsListUrl(this.api, this.webServerRelativeUrl, url)}/items?$select=Title,${column}&$orderby=Id&$top=${MAX_ENTRIES}`;
     logVerbose('GET ' + request);

@@ -35,20 +35,16 @@ const GENERIC_LIST_TEMPLATE = 100;
 
 const LOOKUP_TYPES = ['Lookup', 'LookupMulti'];
 
-/** SP.AddFieldOptions */
 const ADD_TO_DEFAULT_CONTENT_TYPE = 1;
 const ADD_TO_ALL_CONTENT_TYPES = 4;
 const ADD_FIELD_INTERNAL_NAME_HINT = 8;
 const ADD_FIELD_TO_DEFAULT_VIEW = 16;
 
-/** Verbose JSON (with __metadata); the empty OData-Version header suppresses SPHttpClient's "4.0". */
 const VERBOSE_HEADERS = { 'Accept': 'application/json;odata=nometadata', 'Content-Type': 'application/json;odata=verbose', 'OData-Version': '' };
 
-/** accessDenied: missing permission (or custom scripts blocked in SharePoint Online). */
 export class SetupError extends Error {
   constructor(message: string, public readonly accessDenied: boolean) {
     super(message);
-    // ES5 target: restore the prototype chain, otherwise instanceof fails.
     Object.setPrototypeOf(this, SetupError.prototype);
   }
 }
@@ -66,7 +62,6 @@ export function canSetUp(status: ISetupStatus): boolean {
   return settingsMissing || contactMissing;
 }
 
-/** Every setup step checks first, so setup can be repeated after a partial failure. */
 export class SetupService {
   private readonly api: string;
 
@@ -79,7 +74,6 @@ export class SetupService {
     this.api = webAbsoluteUrl.replace(/\/+$/, '') + '/_api';
   }
 
-  /** Missing lists count as missing parts, never as failure; a deleted lookup target (404) -> broken. */
   public check(settings: IFeedbackSettings, sitePagesListId: string): Promise<ISetupStatus> {
     const column = settings.contactColumn.internalName;
     const settingsUrl = this.base.settingsList.url;
@@ -109,7 +103,6 @@ export class SetupService {
     const settingsUrl = this.base.settingsList.url;
     const { settings: settingsList, contact: contactList, lookup: lookupList } = found;
     const broken = isLookup && !lookupList;
-    // The form reads the e-mail column of the list the lookup column points to (a broken one: the contact list).
     const emailList = lookupList || contactList;
     const expected = Object.keys(defaultSettingEntries(this.base));
     return Promise.all([
@@ -122,7 +115,6 @@ export class SetupService {
         settingsList: !settingsUrl ? 'notConfigured' : (!settingsList ? 'missing' : (settingsList.hidden ? 'present' : 'needsUpdate')),
         valueColumn: !settingsUrl ? 'notConfigured' : (valueField ? 'present' : 'missing'),
         entries: !settingsUrl ? 'notConfigured' : (entriesComplete ? 'present' : 'missing'),
-        // An existing lookup target is the contact list (setup creates no other list then).
         contactList: lookupList ? 'present' : (!settings.contactList.url ? 'notConfigured' : (contactList ? 'present' : 'missing')),
         emailColumn: !emailColumn ? 'notConfigured' : (emailField ? 'present' : 'missing'),
         pageColumn: !column ? 'notConfigured' : (!pageField ? 'missing' : (lookupList ? 'present' : (broken ? 'broken' : 'wrongType'))),
@@ -133,7 +125,6 @@ export class SetupService {
     });
   }
 
-  /** Lists of other templates are read; undefined if deleted. */
   private findListById(lists: IListInfo[], id: string): Promise<IListInfo | undefined> {
     const known = lists.filter((list: IListInfo) => list.id.toLowerCase() === id.toLowerCase())[0];
     if (known) {
@@ -144,7 +135,6 @@ export class SetupService {
       .then((json: unknown) => (json === undefined ? undefined : toListInfo(odataEntity(json))));
   }
 
-  /** A wrongType column is left alone; a broken lookup is deleted and recreated (its target cannot be changed). */
   public setup(settings: IFeedbackSettings, sitePagesListId: string, status: ISetupStatus): Promise<void> {
     const settingsPart = this.base.settingsList.url
       ? this.ensureSettingsList().then((listId: string) => this.ensureEntries(listId))
@@ -193,7 +183,6 @@ export class SetupService {
         .sort((a: ILookupColumnOption, b: ILookupColumnOption) => a.title.localeCompare(b.title)));
   }
 
-  /** Plain REST: works with "Design" permission and without custom scripts. */
   public saveValues(values: IStoredValues): Promise<void> {
     const keys = Object.keys(values).filter((key: string) => !!key);
     const { url } = this.base.settingsList;
@@ -211,7 +200,6 @@ export class SetupService {
         }
         const list = listUrl(this.api, existingList.id);
         return this.readEntries(existingList.id).then((entries: IEntries) =>
-          // Sequential: few entries, and a failure stops at a defined point.
           keys.reduce((chain: Promise<unknown>, key: string) => chain.then(() => {
             const body: { [name: string]: unknown } = { __metadata: { type: entries.type }, Title: key };
             body[column] = values[key];
@@ -234,7 +222,6 @@ export class SetupService {
         ADD_TO_DEFAULT_CONTENT_TYPE | ADD_FIELD_INTERNAL_NAME_HINT | ADD_FIELD_TO_DEFAULT_VIEW).then(() => listId));
   }
 
-  /** Empty defaults are created too, so that every setting is visible in the list. */
   private ensureEntries(listId: string): Promise<void> {
     const defaults = defaultSettingEntries(this.base);
     const column = this.base.settingsList.valueColumn.internalName;
@@ -253,7 +240,6 @@ export class SetupService {
     });
   }
 
-  /** For duplicate titles the first entry counts, as in SettingsService (saveValues updates that one). */
   private readEntries(listId: string): Promise<IEntries> {
     const list = listUrl(this.api, listId);
     return Promise.all([
@@ -297,7 +283,6 @@ export class SetupService {
     return this.getGenericLists().then((lists: IListInfo[]) => this.byUrl(lists, url));
   }
 
-  /** hidden = true also hides an existing visible list. */
   private ensureList(url: string, title: string, hidden?: boolean): Promise<string> {
     return this.findList(url).then((existing: IListInfo | undefined) => {
       if (!existing) {
@@ -317,7 +302,6 @@ export class SetupService {
       { 'X-HTTP-Method': 'MERGE', 'IF-MATCH': '*' });
   }
 
-  /** The list URL comes from the title at creation: title and hidden flag are set afterwards. */
   private createList(urlName: string, title: string, hidden: boolean): Promise<string> {
     const body = {
       __metadata: { type: 'SP.List' },
@@ -375,7 +359,6 @@ export class SetupService {
     });
   }
 
-  /** $filter: a missing field is an empty result, not an error status. */
   private readField(listId: string, internalName: string, listMayBeMissing?: boolean): Promise<IFieldSchema | undefined> {
     const filter = encodeURIComponent(`InternalName eq '${internalName}'`);
     return this.get(`${listUrl(this.api, listId)}/fields?$select=InternalName,TypeAsString,LookupList&$filter=${filter}`, 'Columns could not be read', listMayBeMissing)
@@ -391,7 +374,6 @@ export class SetupService {
       .then(() => logInfo('Broken lookup column deleted', { internalName }));
   }
 
-  /** notFoundIsEmpty: 404 resolves with undefined and is not logged as error. */
   private get(url: string, message: string, notFoundIsEmpty?: boolean): Promise<unknown> {
     logVerbose('GET ' + url);
     return this.httpClient.get(url, SPHttpClient.configurations.v1, NOMETADATA)
@@ -414,7 +396,6 @@ export class SetupService {
 
   private checked(response: SPHttpClientResponse, message: string): Promise<unknown> {
     if (response.ok) {
-      // MERGE answers with 204 (no body).
       return response.status === 204 ? Promise.resolve(undefined) : response.json().catch(() => undefined);
     }
     return response.text().then((text: string) => {

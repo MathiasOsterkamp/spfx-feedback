@@ -3,10 +3,8 @@ import { formatText } from '../loc/template';
 import { FeedbackErrors, FeedbackField, IFeedbackForm } from '../models/IFeedback';
 import * as strings from 'FeedbackApplicationCustomizerStrings';
 
-/** Pragmatic check; no spaces, brackets or separators. */
 const EMAIL = /^[^\s@<>()[\]\\,;:"]+@([a-z0-9-]+\.)+[a-z]{2,}$/i;
 
-/** Order of the form; used to focus the first error. */
 export const FIELD_ORDER: FeedbackField[] = ['category', 'subject', 'url', 'description', 'contactEmail', 'mailboxEmail'];
 
 export function checkEmail(email: string, policy: ISecurityPolicy): string {
@@ -39,14 +37,12 @@ function checkEmailList(value: string, policy: ISecurityPolicy): string {
   return '';
 }
 
-/** Length is checked too: the pre-filled value from SharePoint can be longer than the field allows to type. */
 export function checkAddressField(value: string, policy: ISecurityPolicy): string {
   return value.trim().length > policy.maxTextLength
     ? formatText(strings.errorTooLong, policy.maxTextLength)
     : checkEmailList(value, policy);
 }
 
-/** Only absolute http(s) addresses (the URL becomes a link in the mail). */
 function checkUrl(url: string, policy: ISecurityPolicy): string {
   if (url.length > policy.maxTextLength) {
     return formatText(strings.errorTooLong, policy.maxTextLength);

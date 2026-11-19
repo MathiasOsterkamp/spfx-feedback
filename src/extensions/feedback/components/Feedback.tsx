@@ -24,7 +24,6 @@ export interface IFeedbackProps {
   canSaveSettings: boolean;
 }
 
-/** Without query and fragment: drops parameters such as loadSPFX/debugManifestsFile. */
 function currentPageUrl(): string {
   const location = window.location;
   return location.protocol + '//' + location.host + location.pathname;
@@ -38,10 +37,8 @@ export const Feedback: React.FunctionComponent<IFeedbackProps> = (props: IFeedba
     return null;
   }
 
-  // Modern pages navigate without reloading: take page and address when opening.
   const open = (): void => setOpenedOn({ page, url: currentPageUrl() });
 
-  // applyTo="none": provides the theme without painting a background over the page.
   return (
     <ThemeProvider theme={theme} applyTo="none">
       <IconButton

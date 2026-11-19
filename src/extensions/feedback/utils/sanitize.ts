@@ -6,13 +6,10 @@ import { IFeedbackSettings, ILanguageSettings, IMailboxSettings, IMailSettings, 
 
 const COLOR_PATTERN = /^(#[0-9a-f]{3,8}|rgba?\(\s*[\d.\s,%]+\)|hsla?\(\s*[\d.\s,%deg]+\)|[a-z]{3,30})$/i;
 
-/** Internal field names (special characters encoded as _xHHHH_). Inserted into REST URLs, so nothing else is allowed. */
 export const FIELD_NAME = /^[A-Za-z_][A-Za-z0-9_]{0,254}$/;
 
-/** List name in "Lists/<name>"; becomes part of REST URLs. */
 export const LIST_NAME = /^[A-Za-z0-9_-]{1,128}$/;
 
-/** Prevents CSS injection via color values. */
 export function safeColor(value: unknown, fallback: string): string {
   const v = typeof value === 'string' ? value.trim() : '';
   return COLOR_PATTERN.test(v) ? v : fallback;
@@ -52,7 +49,6 @@ export interface IFeedbackConfig {
 
 const LANGUAGE_CODE = /^[a-z]{2,3}(-[a-z0-9]{2,8})*$/;
 
-/** "Kategorien (de-de)". Empty key = no entry. */
 export function languageKey(key: string, language: string): string {
   return key ? `${key} (${language})` : '';
 }
@@ -85,7 +81,6 @@ export function defaultSettingEntries(base: IFeedbackSettings): IStoredValues {
 
 const FALLBACK_TEMPLATE = { subject: '[Feedback] {{subject}}', body: '{{category}}: {{subject}}\n{{url}}\n\n{{description}}\n\n{{reporterName}} {{reporterEmail}}' };
 
-/** HTML tags: mail templates are plain text, tags would appear literally in the mail. */
 const HTML_TAG = /<\/?[a-z!][^>]*>/i;
 
 export function containsHtml(template: string): boolean {
@@ -94,7 +89,6 @@ export function containsHtml(template: string): boolean {
 
 const LIST_URL = /^Lists\/[A-Za-z0-9_-]{1,128}$/;
 
-/** Invalid names are logged and switch the affected feature off instead of sending broken requests. */
 export function createSettings(config: IFeedbackConfig, uiLanguage: string, policy: ISecurityPolicy): IFeedbackSettings {
   const contact = config.contact;
   const columnName = safeFieldName(contact.pageColumn.internalName, 'contact.pageColumn.internalName');
@@ -176,7 +170,6 @@ function pickLanguage(languages: ILanguageSettings[], uiLanguage: string, defaul
   return pickByLanguage(languagesByCode(languages), uiLanguage) || defaultLanguage;
 }
 
-/** Without contact.selectableInSettings the contact keys stay empty: no such entry is created, read or stored. */
 function createSettingsList(config: IFeedbackConfig): ISettingsListSettings {
   const list = config.settingsList;
   const keys = list.keys;
@@ -208,7 +201,6 @@ function createMailboxSettings(config: IFeedbackConfig, settingsList: ISettingsL
   return { key: settingsList.url ? key : '' };
 }
 
-/** Empty entries keep the code value. Invalid ones are ignored: the list can be edited directly, bypassing the settings view. */
 export function applyStoredValues(base: IFeedbackSettings, stored: IStoredValues, policy: ISecurityPolicy): IFeedbackSettings {
   const keys = base.settingsList.keys;
   const value = (key: string): string => (key && typeof stored[key] === 'string' ? stored[key].trim() : '');
@@ -234,7 +226,6 @@ export function applyStoredValues(base: IFeedbackSettings, stored: IStoredValues
     }
   }
 
-  // Empty internal name in base = invalid code configuration, the contact stays off.
   const columnName = value(keys.contactColumn);
   if (columnName && base.contactColumn.internalName) {
     if (!FIELD_NAME.test(columnName)) {
@@ -320,7 +311,6 @@ function safeFieldName(value: unknown, setting: string): string {
   return name;
 }
 
-/** At most 255 characters (Title column). */
 function safeEntryKey(value: unknown): string {
   const key = typeof value === 'string' ? singleLine(value) : '';
   return key.length <= 255 ? key : '';

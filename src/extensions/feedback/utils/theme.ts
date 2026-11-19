@@ -3,9 +3,7 @@ import { ComponentsStyles, createTheme, IFontStyles, IPalette, ISemanticColors, 
 import { safeColor } from './sanitize';
 import { asRecord, IUntyped } from './untyped';
 
-// SPFx 1.4.1 has no theme service: site colors come from window.__themeState__.theme, createTheme derives the rest.
 const COMPONENT_OVERRIDES: ComponentsStyles = {
-  // Links must not be recognizable by their color alone (WCAG 1.4.1).
   Link: {
     styles: {
       root: { textDecoration: 'underline' }
@@ -13,14 +11,11 @@ const COMPONENT_OVERRIDES: ComponentsStyles = {
   }
 };
 
-/** Accessibility requirement. */
 const MIN_FONT_SIZE = '14px';
 
-/** WCAG 2.1 AA: text (1.4.3) and graphics such as icons (1.4.11). */
 const MIN_TEXT_CONTRAST = 4.5;
 export const MIN_GRAPHIC_CONTRAST = 3;
 
-/** Disabled elements are left out (exempt in WCAG). */
 const TEXT_PAIRS: Array<[keyof ISemanticColors, keyof ISemanticColors]> = [
   ['bodyText', 'bodyBackground'],
   ['bodySubtext', 'bodyBackground'],
@@ -70,7 +65,6 @@ export function createSharePointTheme(): ITheme {
     isInverted: isDark(palette.white)
   });
 
-  // Second pass only if the site colors break a contrast: the fixes are semantic slots of their own.
   const theme = build(semanticColors);
   const fixes = contrastFixes(theme);
   return Object.keys(fixes).length > 0 ? build({ ...semanticColors, ...fixes }) : theme;
@@ -101,7 +95,6 @@ function contrastFixes(theme: ITheme): { [slot: string]: string } {
   return fixes;
 }
 
-/** Unparseable colors are kept. */
 export function readableColor(background: string, candidates: string[], minimum: number = MIN_TEXT_CONTRAST): string {
   if (!getColorFromString(background)) {
     return candidates[0];
@@ -124,7 +117,6 @@ function contrastRatio(a: string, b: string): number | undefined {
   return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
 }
 
-/** Relative luminance (WCAG 2.1). */
 function luminance(value: string): number | undefined {
   const color = value ? getColorFromString(value) : undefined;
   if (!color) {
@@ -137,7 +129,6 @@ function luminance(value: string): number | undefined {
   return 0.2126 * channel(color.r) + 0.7152 * channel(color.g) + 0.0722 * channel(color.b);
 }
 
-/** The slot values are untrusted: only valid CSS colors. */
 function pickColors(slots: IUntyped, names: string[]): { [slot: string]: string } {
   const colors: { [slot: string]: string } = {};
   names.forEach((name: string) => {
@@ -147,7 +138,6 @@ function pickColors(slots: IUntyped, names: string[]): { [slot: string]: string 
   return colors;
 }
 
-/** In dark themes the "white" slot (page background) is dark. */
 function isDark(background: string | undefined): boolean {
   const color = background ? getColorFromString(background) : undefined;
   return !!color && (0.299 * color.r + 0.587 * color.g + 0.114 * color.b) < 128;

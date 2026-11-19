@@ -16,13 +16,11 @@ const LEVELS: { [K in LogLevelName]: LogLevel } = {
 const PREFIX = '[Feedback] ';
 let subscribed = false;
 
-/** Stored properties are untrusted: unknown values fall back to the default level. */
 export function sanitizeLogLevel(value: unknown): LogLevelName {
   const index = LOG_LEVEL_NAMES.indexOf(value as LogLevelName);
   return index >= 0 ? LOG_LEVEL_NAMES[index] : DEFAULT_LOG_LEVEL;
 }
 
-/** The PnP logger is shared by all components on a page: the level set last applies. */
 export function configureLogging(level: LogLevelName): void {
   if (!subscribed) {
     Logger.subscribe(new ConsoleListener());

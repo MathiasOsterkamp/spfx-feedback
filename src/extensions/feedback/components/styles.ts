@@ -4,11 +4,8 @@ import { ITheme, useTheme } from '@fluentui/react/lib/Theme';
 import { memoizeFunction } from '@fluentui/react/lib/Utilities';
 import { MIN_GRAPHIC_CONTRAST, readableColor } from '../utils/theme';
 
-// Accessibility: no text below 14px; colors combined here are checked with readableColor (see utils/theme.ts).
-
 const GUTTER = 16;
 
-/** Explicit type: needed for the declaration output of the build. */
 export interface IFeedbackClassNames {
   columns: string;
   column: string;
@@ -19,7 +16,6 @@ export interface IFeedbackClassNames {
 }
 
 const getClassNames = memoizeFunction((theme: ITheme): IFeedbackClassNames => mergeStyleSets({
-  // Flexbox with negative margins instead of "gap": also works in IE11 (SharePoint 2019).
   columns: {
     display: 'flex',
     flexWrap: 'wrap',
@@ -93,14 +89,12 @@ const getSettingsClassNames = memoizeFunction((theme: ITheme): ISettingsClassNam
     tabs: {
       marginBottom: 4
     },
-    // Same height for all tabs: the dialog does not jump when switching.
     panel: {
       minHeight: 340
     },
     notice: {
       marginTop: 12
     },
-    // Dropdown has no description prop: this mimics the one of TextField.
     description: { ...small, color: theme.semanticColors.bodySubtext },
     warning: { ...small, color: readableColor(background, [theme.semanticColors.warningText, theme.semanticColors.bodyText]) },
     links: {
@@ -119,7 +113,6 @@ const getSettingsClassNames = memoizeFunction((theme: ITheme): ISettingsClassNam
     },
     value: { ...text, color: theme.semanticColors.bodyText },
     problem: { ...text, color: theme.semanticColors.errorText, marginTop: 12 },
-    // The success color is meant for icons: as text it must reach the text contrast.
     ok: { ...text, color: readableColor(background, [theme.semanticColors.successIcon, theme.semanticColors.bodyText]), marginTop: 12 },
     language: {
       marginTop: 12,
@@ -198,7 +191,6 @@ const getPreviewClassNames = memoizeFunction((theme: ITheme): IPreviewClassNames
       overflow: 'hidden',
       boxShadow: theme.effects.elevation4
     },
-    // A table (label | value): also works in IE11.
     header: {
       width: '100%',
       borderCollapse: 'collapse',
@@ -250,7 +242,6 @@ const getPreviewClassNames = memoizeFunction((theme: ITheme): IPreviewClassNames
       fontStyle: 'italic',
       color: theme.semanticColors.bodySubtext
     },
-    // Fixed colors: mail programs ignore the SharePoint theme.
     body: {
       ...wrap,
       padding: 16,
@@ -266,12 +257,10 @@ const getPreviewClassNames = memoizeFunction((theme: ITheme): IPreviewClassNames
   });
 });
 
-
 export function usePreviewClassNames(): IPreviewClassNames {
   return getPreviewClassNames(useTheme());
 }
 
-/** Icon color per state contrasts with the theme color; a too-light theme color gets a dark edge (WCAG 1.4.11). */
 export const getFloatingButtonStyles = memoizeFunction((theme: ITheme): IButtonStyles => {
   const { palette } = theme;
   const iconOn = (background: string): string => readableColor(background, [palette.white, palette.neutralPrimary], MIN_GRAPHIC_CONTRAST);
@@ -281,7 +270,6 @@ export const getFloatingButtonStyles = memoizeFunction((theme: ITheme): IButtonS
       position: 'fixed',
       right: 24,
       bottom: 24,
-      // Above the page content, below Fluent layers (dialogs, panels: 1000000).
       zIndex: 1000,
       width: 52,
       height: 52,
