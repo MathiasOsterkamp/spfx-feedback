@@ -13,7 +13,6 @@ export class MailService {
     this.endpoint = webAbsoluteUrl.replace(/\/+$/, '') + '/_api/SP.Utilities.Utility.SendEmail';
   }
 
-  /** Rejects if SharePoint does not accept the mail (details are logged, not shown). */
   public send(mail: IMail): Promise<void> {
     // Verbose format with __metadata: rejected under SPHttpClient's default "OData-Version: 4.0" (header emptied below).
     const properties: { [key: string]: unknown } = {

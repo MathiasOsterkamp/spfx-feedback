@@ -3,7 +3,6 @@ export interface IUntyped {
   [key: string]: unknown;
 }
 
-/** Non-objects become {}. */
 export function asRecord(value: unknown): IUntyped {
   return value && typeof value === 'object' ? value as IUntyped : {};
 }

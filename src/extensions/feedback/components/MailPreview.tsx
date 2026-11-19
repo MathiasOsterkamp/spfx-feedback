@@ -4,16 +4,15 @@ import { IMail } from '../utils/mail';
 import * as strings from 'FeedbackApplicationCustomizerStrings';
 
 export interface IMailPreviewProps {
-  /** Exactly as it will be sent (buildMail). */
   mail: IMail;
 }
 
-/** Not shown: the sender (fixed by SharePoint) and BCC (hidden from everyone, also from the reporter). */
+/** Deliberately not shown: the sender (fixed by SharePoint) and BCC (hidden also from the reporter). */
 export const MailPreview: React.FunctionComponent<IMailPreviewProps> = (props: IMailPreviewProps) => {
   const { mail } = props;
   const classNames = usePreviewClassNames();
 
-  // Links in the body would replace the SharePoint page (and the form): open them in a new window instead.
+  // Links would replace the SharePoint page (and the form): open them in a new window.
   const onBodyClick = (event: React.MouseEvent<HTMLDivElement>): void => {
     let element = event.target as HTMLElement | null;
     while (element && element !== event.currentTarget && element.tagName !== 'A') {
@@ -54,8 +53,7 @@ export const MailPreview: React.FunctionComponent<IMailPreviewProps> = (props: I
             {mail.replyTo && row(strings.previewReplyTo, addresses([mail.replyTo]))}
           </tbody>
         </table>
-        {/* The body is built by buildMail from the plain-text template: template text and all values are
-            HTML-escaped, the only tags are the ones added there (frame, <br>, links to http(s) and mailto). */}
+        {/* Safe: buildMail HTML-escapes template and values; its only tags are the frame, <br> and http(s)/mailto links. */}
         {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- only intercepts clicks on the links inside, which are keyboard accessible themselves */}
         <div className={classNames.body} onClick={onBodyClick} dangerouslySetInnerHTML={{ __html: mail.body }} />
       </div>

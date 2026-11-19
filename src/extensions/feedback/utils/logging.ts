@@ -1,6 +1,5 @@
 import { ConsoleListener, Logger, LogLevel } from '@pnp/logging';
 
-/** Configurable in the extension properties. */
 export type LogLevelName = 'verbose' | 'info' | 'warning' | 'error' | 'off';
 
 const LOG_LEVEL_NAMES: LogLevelName[] = ['verbose', 'info', 'warning', 'error', 'off'];

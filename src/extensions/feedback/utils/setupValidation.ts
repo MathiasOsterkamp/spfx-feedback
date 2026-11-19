@@ -4,7 +4,7 @@ import { ISecurityPolicy } from '../config/securityConfig';
 import { formatText } from '../loc/template';
 import * as strings from 'FeedbackApplicationCustomizerStrings';
 
-// Each returns an error message or ''. Empty is always valid: the code default applies.
+// Empty is always valid: the code default applies.
 
 export function checkListName(value: string): string {
   const name = value.trim();

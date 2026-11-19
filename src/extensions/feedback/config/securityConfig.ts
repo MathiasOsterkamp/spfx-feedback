@@ -1,24 +1,18 @@
-/**
- * Security settings. Deliberately code-only (not in extension properties or the settings list):
- * site owners must not be able to relax them.
- */
+/** Code-only on purpose (not in properties or the settings list): site owners must not be able to relax these. */
 const SECURITY_SETTINGS = {
   /**
-   * Allowed recipient domains (incl. subdomains), e.g. ['firma.de']. Empty = all domains.
-   * Recommended for production: visitors can edit the recipients, so without it the form can send
-   * mails with SharePoint as sender to any address.
+   * Allowed recipient domains incl. subdomains, e.g. ['firma.de']; empty = all. Recommended in production:
+   * visitors can edit the recipients, so otherwise SharePoint sends mail to any address.
    */
   allowedRecipientDomains: [] as string[],
   /** RFC 5321 */
   maxEmailLength: 254,
-  /** Addresses per field (contact, mailbox). */
   maxRecipientsPerField: 10,
-  /** Single-line fields in form and settings view; 255 = SharePoint single line of text. */
+  /** 255 = SharePoint single line of text. */
   maxTextLength: 255,
   maxDescriptionLength: 5000,
   maxCategories: 30,
   maxCategoryLength: 100,
-  /** Mail body template in the settings list. */
   maxMailTemplateLength: 20000
 };
 

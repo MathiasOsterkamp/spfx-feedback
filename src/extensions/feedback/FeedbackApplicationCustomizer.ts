@@ -17,13 +17,11 @@ import { createSettings } from './utils/sanitize';
 import { createSharePointTheme } from './utils/theme';
 import { asRecord } from './utils/untyped';
 
-/** ClientSideComponentProperties (sharepoint/assets/elements.xml); all else: config/feedbackConfig.ts and settings list. */
+/** Set in sharepoint/assets/elements.xml; everything else is configured in config/feedbackConfig.ts. */
 export interface IFeedbackApplicationCustomizerProperties {
-  /** Minimum level written to the browser console. */
   logLevel?: LogLevelName;
 }
 
-/** Base template of the "Site Pages" library. */
 const SITE_PAGES_TEMPLATE = 119;
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- an import would pull config/ into the compiler's rootDir and shift the output in lib/
@@ -34,7 +32,6 @@ const CONTAINER_ID = 'spfx-feedback-button';
 
 export default class FeedbackApplicationCustomizer extends BaseApplicationCustomizer<IFeedbackApplicationCustomizerProperties> {
   private container: HTMLElement | undefined;
-  /** Everything except the current page, which changes on navigation. */
   private baseProps: Pick<IFeedbackProps, Exclude<keyof IFeedbackProps, 'page'>> | undefined;
 
   protected onInit(): Promise<void> {
@@ -46,7 +43,7 @@ export default class FeedbackApplicationCustomizer extends BaseApplicationCustom
       return Promise.resolve();
     }
 
-    // SharePoint sometimes already registers icons with the same name -> suppress warnings.
+    // SharePoint sometimes already registers icons with the same name.
     setIconOptions({ disableWarnings: true });
     // On-premises without internet: host the font files yourself and call initializeIcons('https://.../fonts/').
     initializeIcons();
@@ -59,7 +56,6 @@ export default class FeedbackApplicationCustomizer extends BaseApplicationCustom
     logVerbose('Settings (code)', settings);
 
     const http = this.context.spHttpClient;
-    // Settings list: create it and edit its entries -> "Design" permission (ManageLists, EditListItems).
     const canSaveSettings = web.permissions.hasPermission(SPPermission.manageLists) && web.permissions.hasPermission(SPPermission.editListItems);
     this.baseProps = {
       theme: createSharePointTheme(),
@@ -74,12 +70,11 @@ export default class FeedbackApplicationCustomizer extends BaseApplicationCustom
       mailService: new MailService(http, web.absoluteUrl),
       recipientService: new RecipientService(http, web.absoluteUrl, policy),
       setupService: new SetupService(http, web.absoluteUrl, web.serverRelativeUrl, settings),
-      // Gear icon: "Design" permission level (includes ManageLists).
       canConfigure: web.permissions.hasPermission(SPPermission.manageLists),
       canSaveSettings
     };
 
-    // Own container at the end of the body: the floating button is independent of the SharePoint placeholders.
+    // Own container instead of a SharePoint placeholder: the button floats.
     this.container = document.createElement('div');
     this.container.id = CONTAINER_ID;
     document.body.appendChild(this.container);
@@ -111,10 +106,7 @@ export default class FeedbackApplicationCustomizer extends BaseApplicationCustom
     ReactDom.render(React.createElement(Feedback, { ...this.baseProps, page }), this.container);
   }
 
-  /**
-   * Only items of Site Pages. SPFx 1.4.1 does not expose the list base template: it comes from the
-   * legacy page context, otherwise the library URL ".../SitePages" decides.
-   */
+  /** SPFx 1.4.1 does not expose the list base template: legacy page context, else the URL ".../SitePages" decides. */
   private currentSitePage(): IPageInfo | undefined {
     const pageContext = this.context.pageContext;
     const legacy = asRecord(pageContext.legacyPageContext);
@@ -130,8 +122,7 @@ export default class FeedbackApplicationCustomizer extends BaseApplicationCustom
     if (!isSitePages) {
       return undefined;
     }
-    // Only decides which setup actions are offered (SharePoint checks on the server):
-    // the contact list needs ManageLists on the web, the lookup column ManageLists on Site Pages.
+    // Only decides which setup actions are offered; SharePoint checks on the server.
     const web = pageContext.web;
     return {
       listId: list.id.toString(),

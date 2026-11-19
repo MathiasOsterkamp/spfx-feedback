@@ -31,26 +31,20 @@ import { checkAddressField, splitEmails } from '../utils/validation';
 import * as strings from 'FeedbackApplicationCustomizerStrings';
 
 export interface ISettingsViewProps {
-  /** undefined while loading */
   site: ISiteSettings | undefined;
-  /** undefined while loading */
   defaults: IRecipientDefaults | undefined;
-  /** Code configuration; its defaults are shown as placeholders. */
   base: IFeedbackSettings;
   page: IPageInfo;
-  /** May store entries in the settings list (shared mailbox included). */
   canSaveSettings: boolean;
   policy: ISecurityPolicy;
   setupService: SetupService;
   webUrl: string;
-  /** After save/setup: the dialog reloads settings and recipients. */
   onChanged: () => void;
   onBack: () => void;
 }
 
 type Tab = 'recipients' | 'texts' | 'setup';
 
-/** Stored once per language (entry title with language code). */
 type LanguageField = 'categories' | 'mailSubject' | 'mailBody';
 type SiteField = Exclude<keyof ISettingKeys, LanguageField> | 'mailbox';
 type Field = SiteField | LanguageField;
@@ -58,7 +52,7 @@ type Field = SiteField | LanguageField;
 const SITE_FIELDS: SiteField[] = ['contactList', 'contactColumn', 'mailbox'];
 const LANGUAGE_FIELDS: LanguageField[] = ['categories', 'mailSubject', 'mailBody'];
 
-/** Keyed by input id: the field, or "field|language" for language fields. */
+/** Keyed by input id: "field", or "field|language" for language fields. */
 type Values = { [id: string]: string };
 type Flags = { [id: string]: boolean | undefined };
 type Errors = { [id: string]: string | undefined };
@@ -84,7 +78,6 @@ function tabOf(id: string): Tab {
   return parseId(id).language ? 'texts' : 'recipients';
 }
 
-/** Settings list entry title of an input (not for the shared mailbox). */
 function entryKey(keys: ISettingKeys, id: string): string {
   const { field, language } = parseId(id);
   return field === 'mailbox' ? '' : (language ? languageKey(keys[field], language) : keys[field]);
@@ -105,10 +98,7 @@ function failureText(error: unknown, general: string): string {
 
 const NEW_WINDOW = { target: '_blank', rel: 'noopener noreferrer' };
 
-/**
- * Site settings (gear icon, "Design" permission): the only place where anything is set up in SharePoint.
- * An empty field means the code default (placeholder); saving requires the settings list to be set up.
- */
+/** An empty field means the code default (shown as placeholder). */
 export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props: ISettingsViewProps) => {
   const { site, defaults, base, page, canSaveSettings, policy, setupService, webUrl, onChanged, onBack } = props;
   const formClassNames = useClassNames();
@@ -117,20 +107,22 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
   const settings = site ? site.settings : base;
   const languages = base.languages;
   const ids = allIds(languages);
+  /** No entry key (contact.selectableInSettings off): list and column are shown read-only. */
+  const contactListSelectable = !!base.settingsList.keys.contactList;
+  const contactColumnSelectable = !!base.settingsList.keys.contactColumn;
 
   const [tab, setTab] = React.useState<Tab>('recipients');
-  /** The first status picks the start tab (setup if incomplete) unless the user already chose one. */
+  /** Only the first status may switch to the setup tab, so a tab the user chose is kept. */
   const tabChosen = React.useRef(false);
   const [languageCode, setLanguageCode] = React.useState(base.language);
   const language = languages.filter((entry: ILanguageSettings) => entry.code === languageCode)[0] || languages[0];
 
-  /** undefined while loading for the first time, null if the check failed. */
+  /** null: the check failed. */
   const [status, setStatus] = React.useState<ISetupStatus | null | undefined>(undefined);
   const [checking, setChecking] = React.useState(false);
   const [checkCount, setCheckCount] = React.useState(0);
-  /** undefined while loading, null if unreadable (-> text field instead of dropdown). */
+  // null: unreadable, a text field replaces the dropdown.
   const [contactLists, setContactLists] = React.useState<IContactListOption[] | null | undefined>(undefined);
-  /** Lookup columns of Site Pages; undefined while loading, null if unreadable (-> text field). */
   const [lookupColumns, setLookupColumns] = React.useState<ILookupColumnOption[] | null | undefined>(undefined);
 
   const [values, setValues] = React.useState<Values>({});
@@ -138,7 +130,7 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
   const [errors, setErrors] = React.useState<Errors>({});
   const [saving, setSaving] = React.useState(false);
   const [saveMessage, setSaveMessage] = React.useState<IMessage | undefined>(undefined);
-  /** Saved, waiting for the dialog to reload: the fields keep their input until then. */
+  /** Saved: the fields keep their input until the dialog has reloaded the settings. */
   const [reloading, setReloading] = React.useState(false);
   const [setupBusy, setSetupBusy] = React.useState(false);
   const [setupMessage, setSetupMessage] = React.useState<IMessage | undefined>(undefined);
@@ -148,6 +140,7 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
   React.useEffect(() => () => { mounted.current = false; }, []);
 
   const loadContactLists = (): void => {
+    if (!contactListSelectable) { return; }
     setupService.getContactLists().then(
       (lists: IContactListOption[]) => { if (mounted.current) { setContactLists(lists); } },
       () => { if (mounted.current) { setContactLists(null); } }
@@ -156,6 +149,7 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
   React.useEffect(loadContactLists, [setupService]);
 
   const loadLookupColumns = (): void => {
+    if (!contactColumnSelectable) { return; }
     setupService.getLookupColumns(page.listId).then(
       (columns: ILookupColumnOption[]) => { if (mounted.current) { setLookupColumns(columns); } },
       () => { if (mounted.current) { setLookupColumns(null); } }
@@ -163,7 +157,7 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
   };
   React.useEffect(loadLookupColumns, [setupService, page.listId]);
 
-  // Re-check after every settings change (save, setup); checkRun drops results of outdated runs.
+  // checkRun drops results of outdated runs.
   const checkRun = React.useRef(0);
   React.useEffect(() => {
     if (!site) { return; }
@@ -193,7 +187,6 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
   ids.forEach((id: string) => { stored[id] = storedValue(id); });
   const storedKey = JSON.stringify(stored);
 
-  // Pre-fill with the stored values (again after saving), except fields the user is editing.
   React.useEffect(() => {
     setValues((current: Values) => {
       const next = { ...current };
@@ -205,7 +198,6 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
     // storedKey stands for stored (a new object on every render).
   }, [storedKey, dirty]);
 
-  // The dialog reloaded the settings after saving: show the stored values again.
   React.useEffect(() => {
     if (reloading) {
       setReloading(false);
@@ -213,12 +205,13 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
     }
   }, [site]);
 
-  /** Settings list with value column exists (assumed if the check failed: saving reports a missing list). */
+  /** Assumed if the check failed: saving then reports a missing list. */
   const listReady = status === null
     || (!!status && (status.settingsList === 'present' || status.settingsList === 'needsUpdate') && status.valueColumn === 'present');
   const listReadable = !!site && !!site.stored;
   const listEditable = canSaveSettings && listReadable && listReady;
-  const editable = (id: string): boolean => listEditable && (id !== 'mailbox' || !!base.mailbox.key);
+  const editable = (id: string): boolean =>
+    listEditable && !!(id === 'mailbox' ? base.mailbox.key : entryKey(settings.settingsList.keys, id));
   const anyDirty = ids.some((id: string) => !!dirty[id]);
   const busy = saving || setupBusy;
 
@@ -298,7 +291,6 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
         setSetupMessage({ text: strings.settingsSetupDone, tone: 'ok' });
         loadContactLists();
         loadLookupColumns();
-        // Reloads settings and recipients; the new settings trigger a new check.
         onChanged();
       },
       (error: unknown) => {
@@ -323,7 +315,6 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
     <p className={msg.tone === 'ok' ? classNames.ok : classNames.problem} role={msg.tone === 'ok' ? 'status' : 'alert'}>{msg.text}</p>
   );
 
-  /** Enter in a single-line field saves. */
   const fieldProps = (id: string, multiline?: boolean): Partial<ITextFieldProps> => ({
     className: formClassNames.field,
     value: values[id] || '',
@@ -362,13 +353,12 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
 
   const baseUrl = webUrl.replace(/\/+$/, '');
   const sameName = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase();
-  /** Name of a list in its URL ("Lists/<name>"), '' for lists elsewhere. */
   const urlName = (list: IListRef): string => {
     const match = /\/Lists\/([^/]+)$/i.exec(list.serverRelativeUrl);
     return match ? match[1] : '';
   };
 
-  /** Key '' = code default (no settings list entry); a stored list that does not exist is added as "not found". */
+  /** Key '' = code default; a stored list (or column, below) that does not exist is added as "not found". */
   const defaultListName = base.contactList.url.substring('Lists/'.length);
   const contactListOptions = (): { options: IDropdownOption[]; selectedKey: string } => {
     const lists = (contactLists || []).filter((list: IContactListOption) => !sameName(list.name, defaultListName));
@@ -393,7 +383,7 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
     return { options, selectedKey: current };
   };
 
-  /** The existing lookup column targets another list than the selected one: the selection has no effect. */
+  /** The existing lookup column targets another list: the selected one has no effect. */
   const lookupNotice = (): React.ReactNode => {
     const lookup = status ? status.lookupList : undefined;
     if (!lookup) { return null; }
@@ -402,7 +392,19 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
     return <p className={classNames.warning}>{formatText(strings.settingsContactListLookup, lookup.title || strings.settingsSetupUnknownList)}</p>;
   };
 
+  const readOnlyRow = (label: string, value: string): React.ReactNode => (
+    <div className={classNames.row}>
+      <div className={classNames.label}>{label}</div>
+      <div className={classNames.value}>{value || strings.settingsStatusNotConfigured}</div>
+    </div>
+  );
+
   const contactListField = (): React.ReactNode => {
+    if (!contactListSelectable) {
+      const list = settings.contactList;
+      const name = list.url.substring('Lists/'.length);
+      return readOnlyRow(strings.settingsContactListLabel, !list.url ? '' : (sameName(list.title, name) ? list.title : `${list.title} (${list.url})`));
+    }
     if (contactLists === null) {
       return (
         <TextField
@@ -430,7 +432,6 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
     );
   };
 
-  /** Key '' = code default (no settings list entry); a stored column that does not exist is added as "not found". */
   const defaultColumn = base.contactColumn.internalName;
   const columnText = (column: ILookupColumnOption): string =>
     (column.title === column.internalName ? column.title : `${column.title} (${column.internalName})`);
@@ -454,6 +455,11 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
   };
 
   const contactColumnField = (): React.ReactNode => {
+    if (!contactColumnSelectable) {
+      const column = settings.contactColumn;
+      return readOnlyRow(strings.settingsContactColumnLabel, !column.internalName ? ''
+        : (column.displayName === column.internalName ? column.displayName : `${column.displayName} (${column.internalName})`));
+    }
     if (lookupColumns === null) {
       return (
         <TextField
@@ -519,6 +525,7 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
           {contactListField()}
           {lookupNotice()}
           {contactColumnField()}
+          {(!contactListSelectable || !contactColumnSelectable) && <p className={classNames.description}>{strings.settingsContactFixed}</p>}
           {pageContact()}
         </section>
 
@@ -544,7 +551,7 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
   const defaultFor = (field: LanguageField, entry: ILanguageSettings): string =>
     (field === 'categories' ? entry.categories.join('\n') : (field === 'mailSubject' ? entry.subject : entry.body));
 
-  /** Own value: not empty and not the default ("Set up" pre-fills the defaults). */
+  /** "Set up" pre-fills the defaults: a value equal to the default does not count as own. */
   const isCustomized = (field: LanguageField, entry: ILanguageSettings): boolean => {
     const value = normalize(field, values[fieldId(field, entry.code)] || '');
     return !!value && value !== normalize(field, defaultFor(field, entry));
@@ -552,7 +559,6 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
 
   const languageHasErrors =(code: string): boolean => LANGUAGE_FIELDS.some((field: LanguageField) => !!errors[fieldId(field, code)]);
 
-  /** Insert the default (empty field) or restore it (own value); nothing if the default is shown. */
   const defaultLinks = (fields: LanguageField[]): React.ReactNode => {
     if (!listEditable) { return null; }
     const empty = fields.every((field: LanguageField) => !(values[languageId(field)] || '').trim());
@@ -589,6 +595,17 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
     );
   };
 
+  const labelOf = (code: string): string =>
+    (languages.filter((entry: ILanguageSettings) => entry.code === code)[0] || languages[0]).label;
+
+  const mailLanguageNote = (): React.ReactNode => (
+    <p className={classNames.languageNote}>
+      {languages.length < 2
+        ? formatText(strings.settingsMailLanguageSingle, labelOf(base.language))
+        : formatText(strings.settingsMailLanguage, labelOf(base.language), labelOf(base.defaultLanguage))}
+    </p>
+  );
+
   const placeholders = MAIL_PLACEHOLDERS.map((name: string) => `{{${name}}}`).join(' ');
 
   // The keys remount the fields when the language changes: no state of the previous language remains.
@@ -596,6 +613,7 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
     <>
       {notices()}
       {languagePicker()}
+      {mailLanguageNote()}
       <div className={formClassNames.columns}>
         <section className={formClassNames.column} aria-labelledby="spfx-feedback-settings-form">
           <h3 id="spfx-feedback-settings-form" className={formClassNames.sectionTitle}>{strings.settingsFormHeading}</h3>
@@ -647,7 +665,6 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
     }
   };
 
-  /** text replaces the general status text (e.g. "incomplete"). */
   const checkItem = (key: string, label: string, part: SetupPartStatus, detail?: string, text?: string): React.ReactNode => {
     const fixable = part === 'missing' || part === 'needsUpdate' || part === 'broken';
     const icon = part === 'present' ? 'CompletedSolid' : (fixable ? 'Warning' : 'ErrorBadge');
@@ -665,7 +682,7 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
     );
   };
 
-  /** Value column and entries have no line of their own: a missing part shows the list as incomplete. */
+  /** Value column and entries have no line of their own: a missing one shows the list as incomplete. */
   const settingsListItem = (current: ISetupStatus): React.ReactNode => {
     const label = formatText(strings.settingsSetupSettingsList, base.settingsList.title);
     if (current.settingsList !== 'present') {
@@ -682,7 +699,6 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
 
   const checklist = (current: ISetupStatus): React.ReactNode => {
     const lookup = current.lookupList;
-    // The lookup column's target is the contact list; mention it if it differs from the configured one.
     const contactTitle = lookup ? (lookup.title || strings.settingsSetupUnknownList) : settings.contactList.title;
     const lookupElsewhere = !!lookup && !sameName(urlName(lookup), settings.contactList.url.substring('Lists/'.length));
     return (
@@ -750,7 +766,7 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
   const tabHasErrors = (id: Tab): boolean => ids.some((fieldKey: string) => !!errors[fieldKey] && tabOf(fieldKey) === id);
   const tabWarning = (id: Tab): boolean => (id === 'setup' ? !!status && !isSetupComplete(status) : tabHasErrors(id));
   const tabId = (id: Tab): string => `spfx-feedback-settings-tab-${id}`;
-  /** A warning is shown as icon and announced by screen readers ("Setup - please check"). */
+  /** The ariaLabel announces the warning icon to screen readers. */
   const tabItem = (id: Tab, headerText: string): React.ReactElement => (
     <PivotItem
       itemKey={id}
@@ -784,8 +800,6 @@ export const SettingsView: React.FunctionComponent<ISettingsViewProps> = (props:
           {message(saveMessage)}
         </div>
       )}
-
-      <p className={classNames.visibility}>{formatText(strings.settingsVisibility, base.settingsList.title)}</p>
 
       {confirmLeave && (
         <MessageBar

@@ -13,7 +13,6 @@ import * as strings from 'FeedbackApplicationCustomizerStrings';
 
 export interface IFeedbackProps {
   theme: ITheme;
-  /** undefined if not an item of the Site Pages library -> no button. */
   page: IPageInfo | undefined;
   origin: IFeedbackOrigin;
   policy: ISecurityPolicy;
@@ -21,13 +20,11 @@ export interface IFeedbackProps {
   mailService: MailService;
   recipientService: RecipientService;
   setupService: SetupService;
-  /** Gear icon: at least "Design" permission on the site. */
   canConfigure: boolean;
-  /** May store entries in the settings list (once it is set up). */
   canSaveSettings: boolean;
 }
 
-/** Without query and fragment: drops parameters not belonging to the page (e.g. loadSPFX/debugManifestsFile). */
+/** Without query and fragment: drops parameters such as loadSPFX/debugManifestsFile. */
 function currentPageUrl(): string {
   const location = window.location;
   return location.protocol + '//' + location.host + location.pathname;
@@ -41,10 +38,10 @@ export const Feedback: React.FunctionComponent<IFeedbackProps> = (props: IFeedba
     return null;
   }
 
-  // Modern pages navigate without reloading: page and address are taken at the moment of opening.
+  // Modern pages navigate without reloading: take page and address when opening.
   const open = (): void => setOpenedOn({ page, url: currentPageUrl() });
 
-  // applyTo="none": only provides the theme, without painting a background over the page.
+  // applyTo="none": provides the theme without painting a background over the page.
   return (
     <ThemeProvider theme={theme} applyTo="none">
       <IconButton

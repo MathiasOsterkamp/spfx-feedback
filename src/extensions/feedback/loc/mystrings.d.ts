@@ -16,6 +16,10 @@ declare interface IFeedbackApplicationCustomizerStrings {
   urlPlaceholder: string;
   descriptionLabel: string;
   descriptionPlaceholder: string;
+  anonymousLabel: string;
+  anonymousHint: string;
+  /** {{reporterName}} when sent anonymously */
+  anonymousReporter: string;
   contactLabel: string;
   contactPlaceholder: string;
   mailboxLabel: string;
@@ -56,7 +60,6 @@ declare interface IFeedbackApplicationCustomizerStrings {
   settingsUnsaved: string;
   settingsDiscard: string;
   settingsKeepEditing: string;
-  settingsVisibility: string;
   settingsReadFailed: string;
   settingsNotSetUp: string;
   settingsGoToSetup: string;
@@ -78,6 +81,7 @@ declare interface IFeedbackApplicationCustomizerStrings {
   settingsContactColumnDescription: string;
   settingsContactColumnManual: string;
   settingsContactColumnLoading: string;
+  settingsContactFixed: string;
   settingsPageContactLabel: string;
   settingsPageContactNone: string;
   settingsPageContactInvalid: string;
@@ -94,6 +98,8 @@ declare interface IFeedbackApplicationCustomizerStrings {
   settingsCategoriesLabel: string;
   settingsCategoriesDescription: string;
   settingsMailHeading: string;
+  settingsMailLanguage: string;
+  settingsMailLanguageSingle: string;
   settingsMailSubjectLabel: string;
   settingsMailBodyLabel: string;
   settingsMailBodyPlaceholder: string;

@@ -9,10 +9,7 @@ import { IUntyped, odataItems } from '../utils/untyped';
 /** Protects against a list that was filled by mistake. */
 const MAX_ENTRIES = 500;
 
-/**
- * Applies the settings list entries to the code configuration; one request, cached for the page view.
- * Never fails: unreadable list -> code configuration, stored undefined; missing list or column -> nothing stored.
- */
+/** Never rejects: unreadable list -> stored undefined (code configuration applies); missing list or column -> {}. */
 export class SettingsService {
   private readonly api: string;
   private cache: Promise<ISiteSettings> | undefined;
@@ -21,7 +18,6 @@ export class SettingsService {
     private readonly httpClient: SPHttpClient,
     webAbsoluteUrl: string,
     private readonly webServerRelativeUrl: string,
-    /** Code configuration, without the values of the settings list. */
     public readonly base: IFeedbackSettings,
     private readonly policy: ISecurityPolicy
   ) {
@@ -47,7 +43,6 @@ export class SettingsService {
   private readStored(): Promise<IStoredValues | undefined> {
     const { url, valueColumn } = this.base.settingsList;
     if (!url) {
-      // Invalid configuration, already logged.
       return Promise.resolve({});
     }
     const column = valueColumn.internalName;

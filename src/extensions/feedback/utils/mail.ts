@@ -49,7 +49,6 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
-/** Case-insensitive, without the ones in exclude. */
 function unique(emails: string[], exclude: string[] = []): string[] {
   const seen: { [key: string]: boolean } = {};
   exclude.forEach((email: string) => { seen[email.toLowerCase()] = true; });
@@ -61,7 +60,6 @@ function unique(emails: string[], exclude: string[] = []): string[] {
   });
 }
 
-/** To: contact person(s); Cc: shared mailbox (contacts not repeated). */
 export function recipients(form: IFeedbackForm): { to: string[]; cc: string[] } {
   const contacts = unique(splitEmails(form.contactEmail));
   return { to: contacts, cc: unique(splitEmails(form.mailboxEmail), contacts) };
@@ -74,10 +72,10 @@ const LINKS: { [K in MailPlaceholder]?: (escaped: string) => string } = {
   reporterEmail: (escaped: string) => (escaped ? `<a href="mailto:${escaped}">${escaped}</a>` : '')
 };
 
-/**
- * html = true: template text and values are HTML-escaped, so the template itself cannot inject HTML.
- * Unknown placeholders are removed and logged.
- */
+/** Empty brackets left by an empty value, e.g. "Anonymous ({{reporterEmail}})". */
+const EMPTY_BRACKETS = /[ \t]*\([ \t]*\)/g;
+
+/** html: template text is escaped too, so the template itself cannot inject HTML. */
 function renderTemplate(template: string, values: { [K in MailPlaceholder]: string }, html: boolean): string {
   const rendered = (html ? escapeHtml(template) : template).replace(PLACEHOLDER, (match: string, name: string) => {
     if (!Object.prototype.hasOwnProperty.call(values, name)) {
@@ -91,8 +89,13 @@ function renderTemplate(template: string, values: { [K in MailPlaceholder]: stri
     const escaped = escapeHtml(value);
     const link = LINKS[name as MailPlaceholder];
     return link ? link(escaped) : escaped;
-  });
+  }).replace(EMPTY_BRACKETS, '');
   return html ? rendered.replace(/\r?\n/g, '<br>') : rendered;
+}
+
+/** The empty e-mail address also suppresses Reply-To. */
+export function anonymousOrigin(origin: IFeedbackOrigin, name: string): IFeedbackOrigin {
+  return { ...origin, userName: name, userEmail: '' };
 }
 
 /** Inline styles: mail programs ignore <style>. */

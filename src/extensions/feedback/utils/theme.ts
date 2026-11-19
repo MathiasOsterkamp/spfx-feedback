@@ -3,11 +3,7 @@ import { ComponentsStyles, createTheme, IFontStyles, IPalette, ISemanticColors, 
 import { safeColor } from './sanitize';
 import { asRecord, IUntyped } from './untyped';
 
-/*
- * SPFx 1.4.1 has no theme service and the bundled Fluent UI 8 does not know the site colors: SharePoint
- * publishes them in window.__themeState__.theme; createTheme derives the rest. Site colors that fail
- * the minimum contrast are replaced.
- */
+// SPFx 1.4.1 has no theme service: site colors come from window.__themeState__.theme, createTheme derives the rest.
 const COMPONENT_OVERRIDES: ComponentsStyles = {
   // Links must not be recognizable by their color alone (WCAG 1.4.1).
   Link: {
@@ -17,14 +13,14 @@ const COMPONENT_OVERRIDES: ComponentsStyles = {
   }
 };
 
-/** Accessibility requirement; applies to all Fluent UI components. */
+/** Accessibility requirement. */
 const MIN_FONT_SIZE = '14px';
 
 /** WCAG 2.1 AA: text (1.4.3) and graphics such as icons (1.4.11). */
 const MIN_TEXT_CONTRAST = 4.5;
 export const MIN_GRAPHIC_CONTRAST = 3;
 
-/** Text/background pairs checked by contrastFixes. Disabled elements are left out (exempt in WCAG). */
+/** Disabled elements are left out (exempt in WCAG). */
 const TEXT_PAIRS: Array<[keyof ISemanticColors, keyof ISemanticColors]> = [
   ['bodyText', 'bodyBackground'],
   ['bodySubtext', 'bodyBackground'],
@@ -51,7 +47,6 @@ const TEXT_PAIRS: Array<[keyof ISemanticColors, keyof ISemanticColors]> = [
   ['warningText', 'warningBackground']
 ];
 
-/** Status icons and input borders (also when focused). */
 const ICON_PAIRS: Array<[keyof ISemanticColors, keyof ISemanticColors]> = [
   ['successIcon', 'bodyBackground'],
   ['warningIcon', 'bodyBackground'],
@@ -106,7 +101,7 @@ function contrastFixes(theme: ITheme): { [slot: string]: string } {
   return fixes;
 }
 
-/** First candidate with enough contrast, otherwise black or white. Unparseable colors are kept. */
+/** Unparseable colors are kept. */
 export function readableColor(background: string, candidates: string[], minimum: number = MIN_TEXT_CONTRAST): string {
   if (!getColorFromString(background)) {
     return candidates[0];

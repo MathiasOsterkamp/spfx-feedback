@@ -9,7 +9,6 @@ const EMAIL = /^[^\s@<>()[\]\\,;:"]+@([a-z0-9-]+\.)+[a-z]{2,}$/i;
 /** Order of the form; used to focus the first error. */
 export const FIELD_ORDER: FeedbackField[] = ['category', 'subject', 'url', 'description', 'contactEmail', 'mailboxEmail'];
 
-/** Returns an error message or ''. */
 export function checkEmail(email: string, policy: ISecurityPolicy): string {
   if (email.length > policy.maxEmailLength || !EMAIL.test(email)) {
     return strings.errorEmail;
@@ -79,7 +78,6 @@ export function validateForm(form: IFeedbackForm, categories: string[], policy: 
     errors.description = formatText(strings.errorTooLong, policy.maxDescriptionLength);
   }
 
-  // Contact person (To) is required, shared mailbox (Cc) optional.
   errors.contactEmail = splitEmails(form.contactEmail).length === 0
     ? strings.errorRecipient
     : checkAddressField(form.contactEmail, policy);

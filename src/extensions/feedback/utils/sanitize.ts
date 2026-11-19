@@ -25,6 +25,7 @@ export function singleLine(value: string): string {
 
 export interface IFeedbackConfig {
   contact: {
+    selectableInSettings?: boolean;
     pageColumn: { internalName: string; displayName: string };
     list: { url: string; title: string };
     emailColumn: { internalName: string; displayName: string };
@@ -43,12 +44,12 @@ export interface IFeedbackConfig {
     bcc: string[];
     from: string;
     replyToReporter: boolean;
+    allowAnonymous?: boolean;
   };
   languages: { [language: string]: { label: string; categories: string[]; mailSubject: string; mailBody: string } };
   defaultLanguage: string;
 }
 
-/** Lower case: "de", "de-de", "zh-hant-tw". */
 const LANGUAGE_CODE = /^[a-z]{2,3}(-[a-z0-9]{2,8})*$/;
 
 /** "Kategorien (de-de)". Empty key = no entry. */
@@ -65,7 +66,6 @@ export function settingEntryKeys(settings: IFeedbackSettings): string[] {
     .filter((key: string) => !!key);
 }
 
-/** All settings list entries with the code defaults, as "Set up" creates them. */
 export function defaultSettingEntries(base: IFeedbackSettings): IStoredValues {
   const keys = base.settingsList.keys;
   const entries: IStoredValues = {};
@@ -94,10 +94,7 @@ export function containsHtml(template: string): boolean {
 
 const LIST_URL = /^Lists\/[A-Za-z0-9_-]{1,128}$/;
 
-/**
- * Checks config/feedbackConfig.ts and picks the UI language. Invalid names are logged and switch the
- * affected feature off instead of sending broken requests.
- */
+/** Invalid names are logged and switch the affected feature off instead of sending broken requests. */
 export function createSettings(config: IFeedbackConfig, uiLanguage: string, policy: ISecurityPolicy): IFeedbackSettings {
   const contact = config.contact;
   const columnName = safeFieldName(contact.pageColumn.internalName, 'contact.pageColumn.internalName');
@@ -109,7 +106,8 @@ export function createSettings(config: IFeedbackConfig, uiLanguage: string, poli
   const contactValid = !!columnName && !!emailName && !!listUrl;
   const settingsList = createSettingsList(config);
   const languages = createLanguages(config, policy);
-  const language = pickLanguage(languages, uiLanguage, config.defaultLanguage);
+  const defaultLanguage = pickDefaultLanguage(languages, config.defaultLanguage);
+  const language = pickLanguage(languages, uiLanguage, defaultLanguage);
   return {
     categories: language.categories,
     contactColumn: {
@@ -122,11 +120,11 @@ export function createSettings(config: IFeedbackConfig, uiLanguage: string, poli
     mailbox: createMailboxSettings(config, settingsList),
     mail: createMailSettings(config, language, uiLanguage, policy),
     languages,
-    language: language.code
+    language: language.code,
+    defaultLanguage: defaultLanguage.code
   };
 }
 
-/** Missing categories/template get a minimal one (logged); without any usable language a minimal English entry applies. */
 function createLanguages(config: IFeedbackConfig, policy: ISecurityPolicy): ILanguageSettings[] {
   const entries = asRecord(config.languages);
   const result: ILanguageSettings[] = [];
@@ -163,16 +161,26 @@ function createLanguages(config: IFeedbackConfig, policy: ISecurityPolicy): ILan
   return result;
 }
 
-function pickLanguage(languages: ILanguageSettings[], uiLanguage: string, defaultLanguage: string): ILanguageSettings {
+function languagesByCode(languages: ILanguageSettings[]): { [code: string]: ILanguageSettings } {
   const byCode: { [code: string]: ILanguageSettings } = {};
   languages.forEach((language: ILanguageSettings) => { byCode[language.code] = language; });
-  const fallback = typeof defaultLanguage === 'string' ? byCode[defaultLanguage.trim().toLowerCase()] : undefined;
-  return pickByLanguage(byCode, uiLanguage) || fallback || languages[0];
+  return byCode;
 }
 
+function pickDefaultLanguage(languages: ILanguageSettings[], defaultLanguage: unknown): ILanguageSettings {
+  const configured = typeof defaultLanguage === 'string' ? languagesByCode(languages)[defaultLanguage.trim().toLowerCase()] : undefined;
+  return configured || languages[0];
+}
+
+function pickLanguage(languages: ILanguageSettings[], uiLanguage: string, defaultLanguage: ILanguageSettings): ILanguageSettings {
+  return pickByLanguage(languagesByCode(languages), uiLanguage) || defaultLanguage;
+}
+
+/** Without contact.selectableInSettings the contact keys stay empty: no such entry is created, read or stored. */
 function createSettingsList(config: IFeedbackConfig): ISettingsListSettings {
   const list = config.settingsList;
   const keys = list.keys;
+  const contactSelectable = config.contact.selectableInSettings === true;
   let url = LIST_URL.test(list.url) ? list.url : '';
   const column = safeFieldName(list.valueColumn.internalName, 'settingsList.valueColumn.internalName');
   if (!url) {
@@ -186,8 +194,8 @@ function createSettingsList(config: IFeedbackConfig): ISettingsListSettings {
     title: singleLine(list.title || '') || url.substr(6),
     valueColumn: { internalName: column, displayName: singleLine(list.valueColumn.displayName || '') || column },
     keys: {
-      contactList: safeEntryKey(keys.contactList),
-      contactColumn: safeEntryKey(keys.contactColumn),
+      contactList: contactSelectable ? safeEntryKey(keys.contactList) : '',
+      contactColumn: contactSelectable ? safeEntryKey(keys.contactColumn) : '',
       categories: safeEntryKey(keys.categories),
       mailSubject: safeEntryKey(keys.mailSubject),
       mailBody: safeEntryKey(keys.mailBody)
@@ -197,14 +205,10 @@ function createSettingsList(config: IFeedbackConfig): ISettingsListSettings {
 
 function createMailboxSettings(config: IFeedbackConfig, settingsList: ISettingsListSettings): IMailboxSettings {
   const key = safeEntryKey(config.mailbox.key);
-  // An invalid settings list is already logged: no mailbox from there.
   return { key: settingsList.url ? key : '' };
 }
 
-/**
- * Empty entries keep the code value. Invalid entries are logged and ignored - the settings view does not
- * store them, but the list can be edited directly.
- */
+/** Empty entries keep the code value. Invalid ones are ignored: the list can be edited directly, bypassing the settings view. */
 export function applyStoredValues(base: IFeedbackSettings, stored: IStoredValues, policy: ISecurityPolicy): IFeedbackSettings {
   const keys = base.settingsList.keys;
   const value = (key: string): string => (key && typeof stored[key] === 'string' ? stored[key].trim() : '');
@@ -269,11 +273,11 @@ function createMailSettings(config: IFeedbackConfig, language: ILanguageSettings
     bcc: validEmails(Array.isArray(mail.bcc) ? mail.bcc : [], 'mail.bcc', policy),
     from: fromError ? '' : from,
     replyToReporter: mail.replyToReporter !== false,
+    allowAnonymous: mail.allowAnonymous === true,
     locale: uiLanguage || language.code
   };
 }
 
-/** Exact match ("de-de"), then same language prefix ("de-at" -> "de-de"). */
 function pickByLanguage<T>(entries: { [language: string]: T }, uiLanguage: string): T | undefined {
   const language = (uiLanguage || '').toLowerCase();
   if (entries[language]) {
@@ -284,7 +288,6 @@ function pickByLanguage<T>(entries: { [language: string]: T }, uiLanguage: strin
   return match ? entries[match] : undefined;
 }
 
-/** Valid addresses of values read from SharePoint (separated by ";" or ","); the rest is logged. */
 export function validEmails(values: string[], source: string, policy: ISecurityPolicy): string[] {
   const seen: { [key: string]: boolean } = {};
   const result: string[] = [];
@@ -323,7 +326,6 @@ function safeEntryKey(value: unknown): string {
   return key.length <= 255 ? key : '';
 }
 
-/** undefined if no usable category, so that the defaults apply. */
 function safeCategories(value: unknown, policy: ISecurityPolicy): string[] | undefined {
   if (!Array.isArray(value)) {
     return undefined;

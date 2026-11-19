@@ -5,7 +5,6 @@ import { logError, logInfo, logVerbose } from '../utils/logging';
 import { defaultSettingEntries, FIELD_NAME, LIST_NAME } from '../utils/sanitize';
 import { IUntyped, odataEntity, odataItems } from '../utils/untyped';
 
-/** name = URL segment after "Lists/". */
 export interface IContactListOption {
   name: string;
   title: string;
@@ -16,14 +15,12 @@ export interface ILookupColumnOption {
   title: string;
 }
 
-/** SP.FieldType.Lookup (single and multiple values). */
 const FIELD_TYPE_LOOKUP = 7;
 
 interface IListInfo extends IListRef {
   hidden: boolean;
 }
 
-/** type = ListItemEntityTypeFullName (needed to create items); ids by title. */
 interface IEntries {
   type: string;
   ids: { [key: string]: number };
@@ -69,10 +66,7 @@ export function canSetUp(status: ISetupStatus): boolean {
   return settingsMissing || contactMissing;
 }
 
-/**
- * SharePoint access of the settings view only: check, setup (every step checks first, so it can be
- * repeated after a partial failure) and saveValues. SharePoint checks the permissions on the server.
- */
+/** Every setup step checks first, so setup can be repeated after a partial failure. */
 export class SetupService {
   private readonly api: string;
 
@@ -80,7 +74,6 @@ export class SetupService {
     private readonly httpClient: SPHttpClient,
     webAbsoluteUrl: string,
     private readonly webServerRelativeUrl: string,
-    /** Code configuration; defines the settings list and its entries. */
     private readonly base: IFeedbackSettings
   ) {
     this.api = webAbsoluteUrl.replace(/\/+$/, '') + '/_api';
@@ -115,7 +108,6 @@ export class SetupService {
     const valueColumn = this.base.settingsList.valueColumn.internalName;
     const settingsUrl = this.base.settingsList.url;
     const { settings: settingsList, contact: contactList, lookup: lookupList } = found;
-    // Lookup column exists, but its list was deleted.
     const broken = isLookup && !lookupList;
     // The form reads the e-mail column of the list the lookup column points to (a broken one: the contact list).
     const emailList = lookupList || contactList;
@@ -152,10 +144,7 @@ export class SetupService {
       .then((json: unknown) => (json === undefined ? undefined : toListInfo(odataEntity(json))));
   }
 
-  /**
-   * A column of another type (wrongType) is left alone. A broken lookup column is deleted and recreated:
-   * the target of a lookup column cannot be changed.
-   */
+  /** A wrongType column is left alone; a broken lookup is deleted and recreated (its target cannot be changed). */
   public setup(settings: IFeedbackSettings, sitePagesListId: string, status: ISetupStatus): Promise<void> {
     const settingsPart = this.base.settingsList.url
       ? this.ensureSettingsList().then((listId: string) => this.ensureEntries(listId))
@@ -172,7 +161,6 @@ export class SetupService {
       .then(() => logInfo('Setup completed'));
   }
 
-  /** Visible custom lists directly below "Lists/" with a valid URL name, without the settings list. */
   public getContactLists(): Promise<IContactListOption[]> {
     const prefix = (this.webServerRelativeUrl.replace(/\/+$/, '') + '/Lists/').toLowerCase();
     const settingsUrl = (this.base.settingsList.url || '').toLowerCase();
@@ -193,7 +181,6 @@ export class SetupService {
         .sort((a: IContactListOption, b: IContactListOption) => a.title.localeCompare(b.title)));
   }
 
-  /** Visible, writable lookup columns of Site Pages (no system columns) with a valid internal name. */
   public getLookupColumns(sitePagesListId: string): Promise<ILookupColumnOption[]> {
     const filter = encodeURIComponent(`FieldTypeKind eq ${FIELD_TYPE_LOOKUP} and Hidden eq false and ReadOnlyField eq false`);
     return this.get(`${listUrl(this.api, sitePagesListId)}/fields?$select=InternalName,Title&$filter=${filter}`, 'Columns could not be read')
@@ -206,10 +193,7 @@ export class SetupService {
         .sort((a: ILookupColumnOption, b: ILookupColumnOption) => a.title.localeCompare(b.title)));
   }
 
-  /**
-   * Updates the first entry per key (as SettingsService reads it) or creates it; an empty value creates none.
-   * Plain REST: works with "Design" permission and without custom scripts. Does not create the list.
-   */
+  /** Plain REST: works with "Design" permission and without custom scripts. */
   public saveValues(values: IStoredValues): Promise<void> {
     const keys = Object.keys(values).filter((key: string) => !!key);
     const { url } = this.base.settingsList;
@@ -250,7 +234,7 @@ export class SetupService {
         ADD_TO_DEFAULT_CONTENT_TYPE | ADD_FIELD_INTERNAL_NAME_HINT | ADD_FIELD_TO_DEFAULT_VIEW).then(() => listId));
   }
 
-  /** Missing entries get the code default - empty ones too, so that every setting is visible in the list. */
+  /** Empty defaults are created too, so that every setting is visible in the list. */
   private ensureEntries(listId: string): Promise<void> {
     const defaults = defaultSettingEntries(this.base);
     const column = this.base.settingsList.valueColumn.internalName;
@@ -269,7 +253,7 @@ export class SetupService {
     });
   }
 
-  /** For duplicate titles the first entry counts, as in SettingsService. */
+  /** For duplicate titles the first entry counts, as in SettingsService (saveValues updates that one). */
   private readEntries(listId: string): Promise<IEntries> {
     const list = listUrl(this.api, listId);
     return Promise.all([
@@ -313,7 +297,7 @@ export class SetupService {
     return this.getGenericLists().then((lists: IListInfo[]) => this.byUrl(lists, url));
   }
 
-  /** Creates the list if missing; hidden = true also hides an existing visible list. */
+  /** hidden = true also hides an existing visible list. */
   private ensureList(url: string, title: string, hidden?: boolean): Promise<string> {
     return this.findList(url).then((existing: IListInfo | undefined) => {
       if (!existing) {
@@ -391,10 +375,7 @@ export class SetupService {
     });
   }
 
-  /**
-   * $filter: a missing field is an empty result, not an error status.
-   * listMayBeMissing: a 404 of the list also counts as "field missing" (check, not setup).
-   */
+  /** $filter: a missing field is an empty result, not an error status. */
   private readField(listId: string, internalName: string, listMayBeMissing?: boolean): Promise<IFieldSchema | undefined> {
     const filter = encodeURIComponent(`InternalName eq '${internalName}'`);
     return this.get(`${listUrl(this.api, listId)}/fields?$select=InternalName,TypeAsString,LookupList&$filter=${filter}`, 'Columns could not be read', listMayBeMissing)

@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { DefaultButton, IButton, IButtonProps, PrimaryButton } from '@fluentui/react/lib/Button';
+import { Checkbox } from '@fluentui/react/lib/Checkbox';
 import { Dialog, DialogFooter, DialogType, IDialogStyles } from '@fluentui/react/lib/Dialog';
 import { Dropdown, IDropdownOption } from '@fluentui/react/lib/Dropdown';
 import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
@@ -22,7 +23,8 @@ import { MailService } from '../services/MailService';
 import { RecipientService } from '../services/RecipientService';
 import { SettingsService } from '../services/SettingsService';
 import { SetupService } from '../services/SetupService';
-import { buildMail, IMail } from '../utils/mail';
+import { logVerbose } from '../utils/logging';
+import { anonymousOrigin, buildMail, IMail } from '../utils/mail';
 import { FIELD_ORDER, hasErrors, validateForm } from '../utils/validation';
 import * as strings from 'FeedbackApplicationCustomizerStrings';
 
@@ -33,9 +35,7 @@ export interface IFeedbackDialogProps {
   mailService: MailService;
   recipientService: RecipientService;
   setupService: SetupService;
-  /** Gear icon: at least "Design" permission on the site. */
   canConfigure: boolean;
-  /** May store entries in the settings list (once it is set up). */
   canSaveSettings: boolean;
   page: IPageInfo;
   pageUrl: string;
@@ -46,10 +46,7 @@ const DIALOG_MAX_WIDTH = 1100;
 
 const DIALOG_WIDTH = '90vw';
 
-/**
- * Dialog "styles", not modalProps.styles: Fluent sets "width: auto" in its own "@media (min-width: 480px)" rule,
- * which shrinks the dialog to its content; only the same media query here overrides it. Phones: full screen.
- */
+/** Only the same media query overrides Fluent's "width: auto" in "@media (min-width: 480px)" (dialog "styles", not modalProps). */
 const DIALOG_STYLES: Partial<IDialogStyles> = {
   main: {
     width: DIALOG_WIDTH,
@@ -73,7 +70,6 @@ const EMAIL_SEPARATOR = '; ';
 
 type Status = 'editing' | 'sending' | 'sent' | 'failed';
 
-/** TextField and Dropdown expose focus() via componentRef. */
 interface IFocusable { focus: () => void; }
 
 /** Mounted anew for every opening, so the form always starts fresh. */
@@ -92,16 +88,13 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
     contactEmail: '',
     mailboxEmail: ''
   }));
+  const [anonymous, setAnonymous] = React.useState(false);
   const [status, setStatus] = React.useState<Status>('editing');
-  /** Errors are shown only after the first attempt to send, then they update while typing. */
   const [showErrors, setShowErrors] = React.useState(false);
-  /** undefined while loading. */
   const [site, setSite] = React.useState<ISiteSettings | undefined>(undefined);
-  /** undefined while loading. */
   const [defaults, setDefaults] = React.useState<IRecipientDefaults | undefined>(undefined);
-  /** Incremented after a settings change: reloads settings and recipients. */
   const [reloadCount, setReloadCount] = React.useState(0);
-  /** The form keeps its input while the preview or the settings are shown. */
+  /** The form state lives here, so it survives the preview and the settings view. */
   const [view, setView] = React.useState<'form' | 'preview' | 'settings'>('form');
   /** Exactly this mail is sent. */
   const [preview, setPreview] = React.useState<IMail | undefined>(undefined);
@@ -111,10 +104,9 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
   const sendButton = React.useRef<IButton>(null);
   const mounted = React.useRef(true);
   React.useEffect(() => () => { mounted.current = false; }, []);
-  /** Addresses last pre-filled: after a change in the settings an unchanged field takes the new value. */
+  /** Last pre-filled addresses: a field the user changed is not overwritten on reload. */
   const prefilled = React.useRef({ contactEmail: '', mailboxEmail: '' });
 
-  // Settings first, then the recipients; a field the user has typed into is not overwritten.
   React.useEffect(() => {
     settingsService.load()
       .then((loadedSite: ISiteSettings) => {
@@ -146,7 +138,6 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
     setReloadCount((count: number) => count + 1);
   };
 
-  /** Until the settings list is read, the code configuration applies (categories not selectable yet). */
   const settings = site ? site.settings : settingsService.base;
   const loading = !defaults;
   const hintFor = (found: boolean, missingText: string): string | undefined =>
@@ -199,7 +190,10 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
       }
       return;
     }
-    setPreview(buildMail(form, origin, settings.mail, new Date()));
+    const sendAnonymously = anonymous && settings.mail.allowAnonymous;
+    const mail = buildMail(form, sendAnonymously ? anonymousOrigin(origin, strings.anonymousReporter) : origin, settings.mail, new Date());
+    logVerbose('Preview', { contactEmail: form.contactEmail, mailboxEmail: form.mailboxEmail, to: mail.to, cc: mail.cc });
+    setPreview(mail);
     setStatus('editing');
     setView('preview');
   };
@@ -224,7 +218,7 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
 
   const showSettings = canConfigure && view === 'settings';
   const showPreviewView = view === 'preview' && !!preview;
-  // Gear in the form only: the settings view has its own "Back" (asks before discarding unsaved changes).
+  // Form only: the settings view has its own "Back", which asks before discarding changes.
   const topButtons: IButtonProps[] = canConfigure && view === 'form' && !busy && !done ? [{
     iconProps: { iconName: 'Settings' },
     title: strings.settingsOpen,
@@ -243,7 +237,6 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
         closeButtonAriaLabel: strings.close,
         topButtonsProps: topButtons
       }}
-      // A click next to the dialog must not discard the input.
       modalProps={{ isBlocking: true }}
       styles={DIALOG_STYLES}
       minWidth={300}
@@ -375,6 +368,21 @@ export const FeedbackDialog: React.FunctionComponent<IFeedbackDialogProps> = (pr
                 inputMode="email"
                 autoComplete="off"
               />
+              {settings.mail.allowAnonymous && (
+                <div className={classNames.field}>
+                  <Checkbox
+                    label={strings.anonymousLabel}
+                    checked={anonymous}
+                    onChange={(_e: unknown, checked?: boolean) => {
+                      setAnonymous(!!checked);
+                      if (status === 'failed') { setStatus('editing'); }
+                    }}
+                    disabled={busy}
+                    ariaDescribedBy="spfx-feedback-anonymous-hint"
+                  />
+                  <p id="spfx-feedback-anonymous-hint" className={classNames.hint}>{strings.anonymousHint}</p>
+                </div>
+              )}
             </fieldset>
           </div>
           <DialogFooter>

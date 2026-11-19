@@ -17,13 +17,9 @@ interface IFieldSchema {
   lookupList: string;
 }
 
-/** Raw values before validation, or a status that ends the evaluation early. */
 type RawResult = string[] | RecipientStatus;
 
-/**
- * Default recipients: contact person (lookup column of the page -> e-mail column of the contact list) and shared
- * mailbox (settings list). The status lets the form tell "nothing stored" from "column missing" and offer the setup.
- */
+/** The status lets the form tell "nothing stored" from "column missing" and offer the setup. */
 export class RecipientService {
   private readonly api: string;
   private contactCache: { [pageKey: string]: Promise<IRecipientSource> } = {};
@@ -104,14 +100,12 @@ export class RecipientService {
     });
   }
 
-  /** Already read by SettingsService: no request of its own. */
   private getMailbox(site: ISiteSettings): Promise<IRecipientSource> {
     const key = site.settings.mailbox.key;
     if (!key) {
       return Promise.resolve(source('notConfigured'));
     }
     if (!site.stored) {
-      // Settings list unreadable (logged by SettingsService).
       return Promise.resolve(source('error'));
     }
     const nonEmpty = textOf(site.stored[key]).filter((value: string) => !!value.trim());
@@ -128,7 +122,6 @@ export class RecipientService {
     return { status: emails.length > 0 ? 'ok' : (nonEmpty.length > 0 ? 'invalid' : 'empty'), emails };
   }
 
-  /** $filter: a missing field is an empty result, not an error status. */
   private readFieldSchema(list: string, internalName: string): Promise<IFieldSchema | undefined> {
     const filter = encodeURIComponent(`InternalName eq '${internalName}'`);
     return this.getJson(`${list}/fields?$select=InternalName,TypeAsString,LookupList&$filter=${filter}`)
@@ -171,7 +164,6 @@ export function settingsListUrl(api: string, webServerRelativeUrl: string, relat
   return `${api}/web/getlist('${encodeURIComponent(serverRelative.replace(/'/g, "''"))}')`;
 }
 
-/** May contain several addresses separated by ";" (split by validEmails). */
 function textOf(value: unknown): string[] {
   return typeof value === 'string' ? [value] : [];
 }

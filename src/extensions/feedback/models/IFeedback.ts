@@ -3,22 +3,21 @@ export interface IColumnName {
   displayName: string;
 }
 
-/** Checked code configuration (createSettings), possibly with the settings list applied (applyStoredValues). */
 export interface IFeedbackSettings {
   /** Never empty. */
   categories: string[];
-  /** Lookup column in Site Pages. Empty internal name = contact disabled (configuration invalid). */
+  /** Empty internalName = contact disabled (invalid configuration). */
   contactColumn: IColumnName;
   /** url: "Lists/<name>" */
   contactList: { url: string; title: string };
   contactEmailColumn: IColumnName;
   settingsList: ISettingsListSettings;
   mailbox: IMailboxSettings;
-  /** Template already chosen for the UI language. */
   mail: IMailSettings;
   languages: ILanguageSettings[];
-  /** Code of the language that applies to the UI language (one of languages). */
   language: string;
+  /** Configured defaultLanguage, or the first language if that is not configured. */
+  defaultLanguage: string;
 }
 
 export interface ILanguageSettings {
@@ -26,13 +25,11 @@ export interface ILanguageSettings {
   code: string;
   label: string;
   categories: string[];
-  /** Plain text with {{placeholders}} */
   subject: string;
-  /** Plain text with {{placeholders}} */
   body: string;
 }
 
-/** Titles of the entries in the settings list. */
+/** Settings list entry titles. Empty = setting not changeable per site. */
 export interface ISettingKeys {
   contactList: string;
   contactColumn: string;
@@ -50,11 +47,10 @@ export interface ISettingsListSettings {
 }
 
 export interface IMailboxSettings {
-  /** Title of the settings list entry. Empty = no pre-filled mailbox (also if the settings list is invalid). */
+  /** Settings list entry title. Empty = no pre-filled mailbox (also if the settings list is invalid). */
   key: string;
 }
 
-/** Entries of the settings list: title (key) -> value. */
 export interface IStoredValues {
   [key: string]: string;
 }
@@ -66,34 +62,28 @@ export interface ISiteSettings {
 }
 
 export interface IMailSettings {
-  /** Plain text with {{placeholders}} */
   subject: string;
-  /** Plain text with {{placeholders}}, turned into HTML when the mail is built */
+  /** Plain text with {{placeholders}}, turned into HTML when the mail is built. */
   body: string;
   cc: string[];
   bcc: string[];
   /** Empty = SharePoint's default sender */
   from: string;
   replyToReporter: boolean;
-  /** UI language, used to format {{date}} */
+  allowAnonymous: boolean;
+  /** Used to format {{date}} */
   locale: string;
 }
 
-/** The current page, if it is an item of the Site Pages library. */
 export interface IPageInfo {
   listId: string;
   itemId: number;
-  /** May create lists and columns. */
   canManageList: boolean;
   /** Approximated by the permission on the library. */
   canEditItems: boolean;
 }
 
-/**
- * empty: page has no value; invalid: value without valid address; missing: column/key does not exist;
- * wrongType: no lookup column; lookupEmailMissing: lookup target list has no e-mail column;
- * notConfigured: no valid column/key in the configuration; error: reading failed.
- */
+/** invalid: no valid address; wrongType: no lookup column; lookupEmailMissing: lookup target list has no e-mail column. */
 export type RecipientStatus = 'ok' | 'empty' | 'invalid' | 'missing' | 'wrongType' | 'lookupEmailMissing' | 'notConfigured' | 'error';
 
 export interface IRecipientSource {
@@ -106,10 +96,7 @@ export interface IRecipientDefaults {
   mailbox: IRecipientSource;
 }
 
-/**
- * needsUpdate: settings list visible -> hidden; broken: lookup column whose list was deleted (recreated);
- * wrongType: column exists but is no lookup (not fixable automatically); notConfigured: invalid name in the code configuration.
- */
+/** needsUpdate: settings list visible -> hidden; broken: lookup to a deleted list (recreated); wrongType: no lookup (not auto-fixable). */
 export type SetupPartStatus = 'present' | 'missing' | 'needsUpdate' | 'broken' | 'wrongType' | 'notConfigured';
 
 export interface IListRef {
@@ -127,7 +114,6 @@ export interface ISetupStatus {
   /** In the lookup target list - or, without lookup column, in the contact list. */
   emailColumn: SetupPartStatus;
   pageColumn: SetupPartStatus;
-  /** Target list of the existing lookup column */
   lookupList?: IListRef;
 }
 
@@ -144,7 +130,6 @@ export interface IFeedbackForm {
 
 export type FeedbackField = keyof IFeedbackForm;
 
-/** A missing entry means the field is valid. */
 export type FeedbackErrors = { [K in FeedbackField]?: string };
 
 export interface IFeedbackOrigin {

@@ -4,8 +4,7 @@ import { ITheme, useTheme } from '@fluentui/react/lib/Theme';
 import { memoizeFunction } from '@fluentui/react/lib/Utilities';
 import { MIN_GRAPHIC_CONTRAST, readableColor } from '../utils/theme';
 
-// Accessibility: no text below 14px (see utils/theme.ts); theme text colors are corrected to >= 4.5:1,
-// colors combined here are checked with readableColor.
+// Accessibility: no text below 14px; colors combined here are checked with readableColor (see utils/theme.ts).
 
 const GUTTER = 16;
 
@@ -15,6 +14,7 @@ export interface IFeedbackClassNames {
   column: string;
   sectionTitle: string;
   field: string;
+  hint: string;
   message: string;
 }
 
@@ -26,12 +26,10 @@ const getClassNames = memoizeFunction((theme: ITheme): IFeedbackClassNames => me
     margin: `0 -${GUTTER}px`
   },
   column: {
-    // Two columns from about 2 × 320 px, below that one under the other.
     flex: '1 1 320px',
     minWidth: 0,
     boxSizing: 'border-box',
     padding: `0 ${GUTTER}px`,
-    // Reset browser styles for <fieldset>
     border: 0,
     margin: 0
   },
@@ -44,6 +42,11 @@ const getClassNames = memoizeFunction((theme: ITheme): IFeedbackClassNames => me
   },
   field: {
     marginTop: 12
+  },
+  hint: {
+    ...theme.fonts.medium,
+    color: theme.semanticColors.bodySubtext,
+    margin: '5px 0 0'
   },
   message: {
     marginBottom: 12
@@ -67,6 +70,7 @@ export interface ISettingsClassNames {
   problem: string;
   ok: string;
   language: string;
+  languageNote: string;
   intro: string;
   checklist: string;
   checkItem: string;
@@ -78,7 +82,6 @@ export interface ISettingsClassNames {
   checkDetail: string;
   checkProblem: string;
   actions: string;
-  visibility: string;
   loading: string;
 }
 
@@ -97,7 +100,7 @@ const getSettingsClassNames = memoizeFunction((theme: ITheme): ISettingsClassNam
     notice: {
       marginTop: 12
     },
-    // Text below a dropdown, like the description of a text field (Dropdown has no description prop).
+    // Dropdown has no description prop: this mimics the one of TextField.
     description: { ...small, color: theme.semanticColors.bodySubtext },
     warning: { ...small, color: readableColor(background, [theme.semanticColors.warningText, theme.semanticColors.bodyText]) },
     links: {
@@ -122,6 +125,7 @@ const getSettingsClassNames = memoizeFunction((theme: ITheme): ISettingsClassNam
       marginTop: 12,
       maxWidth: 320
     },
+    languageNote: { ...small, color: theme.semanticColors.bodySubtext, marginBottom: 8 },
     intro: { ...text, color: theme.semanticColors.bodyText, marginTop: 12 },
     checklist: {
       listStyle: 'none',
@@ -149,11 +153,6 @@ const getSettingsClassNames = memoizeFunction((theme: ITheme): ISettingsClassNam
     actions: {
       marginTop: 16,
       selectors: { '& > *': { marginRight: 8, marginBottom: 8 } }
-    },
-    visibility: {
-      ...theme.fonts.medium,
-      color: theme.semanticColors.bodySubtext,
-      margin: '24px 0 0'
     },
     loading: {
       minHeight: 340
@@ -251,7 +250,7 @@ const getPreviewClassNames = memoizeFunction((theme: ITheme): IPreviewClassNames
       fontStyle: 'italic',
       color: theme.semanticColors.bodySubtext
     },
-    // The body has fixed colors (mail programs ignore the SharePoint theme): white like a mail, scrolls if long.
+    // Fixed colors: mail programs ignore the SharePoint theme.
     body: {
       ...wrap,
       padding: 16,
